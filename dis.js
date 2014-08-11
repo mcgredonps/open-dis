@@ -364,7 +364,7 @@ if (typeof exports === "undefined")
      return newPdu;
  };
 
-exports.PduFactory = dis.PduFactory();
+exports.PduFactory = dis.PduFactory;
 /**
  * Sets up a local tangent place (ENU) coordinate system at a given location
  * and altitude, and handles conversions between geodetic, ECEF, and local
