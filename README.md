@@ -8,7 +8,8 @@ side with no modifications. Typically this will be used in conjunction with webs
 or with node.js networking (native UDP sockets) on the server side. 
 
 It is an implementation of IEEE 1278.1, Distributed Interactive Simulation (DIS), which is widely used in military
-virtual simulations.
+virtual simulations. dis6.js is an implementation of version 6 (1998), the most widely used version, and dis7.js is 
+an implementation of version 7, which is less widely used.
 
 Don McGregor
 mcgredo@nps.edu
