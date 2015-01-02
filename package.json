@@ -1,6 +1,6 @@
 {
   "name": "open-dis",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Javascript Node module for IEEE 1278.1, Distributed Interactive Simulation, Version 6 (1998)",
   "main": "dis.js",
   "scripts": {
