@@ -11,5 +11,9 @@ It is an implementation of IEEE 1278.1, Distributed Interactive Simulation (DIS)
 virtual simulations. dis6.js is an implementation of version 6 (1998), the most widely used version, and dis7.js is 
 an implementation of version 7, which is less widely used.
 
+This also contains a decode package for acs.js, a protoocl sometimes
+used in micro air vehicles. It's closely related to MAVLINK. 
+See http://qgroundcontrol.org/mavlink/start for details.
+
 Don McGregor
 mcgredo@nps.edu
