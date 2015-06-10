@@ -494,6 +494,11 @@ if (typeof exports === "undefined")
      
      return newPdu;
  };
+ 
+ dis.PduFactory.prototype.getPdusFromBundle = function(data)
+ {
+ }
+
 
 exports.PduFactory = dis.PduFactory;
 /**
@@ -6525,7 +6530,7 @@ dis.EntityStatePdu = function()
    this.entityID = new dis.EntityID(); 
 
    /** What force this entity is affiliated with, eg red, blue, neutral, etc */
-   this.forceId = 0;
+   this.forceID = 0;
 
    /** How many variable parameters are in the variable length list. In earlier versions of DIS these were known as articulation parameters */
    this.numberOfVariableParameters = 0;
@@ -6571,7 +6576,7 @@ dis.EntityStatePdu = function()
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
        this.entityID.initFromBinaryDIS(inputStream);
-       this.forceId = inputStream.readUByte();
+       this.forceID = inputStream.readUByte();
        this.numberOfVariableParameters = inputStream.readUByte();
        this.entityType.initFromBinaryDIS(inputStream);
        this.alternativeEntityType.initFromBinaryDIS(inputStream);
@@ -6603,7 +6608,7 @@ dis.EntityStatePdu = function()
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
        this.entityID.encodeToBinaryDIS(outputStream);
-       outputStream.writeUByte(this.forceId);
+       outputStream.writeUByte(this.forceID);
        outputStream.writeUByte(this.numberOfVariableParameters);
        this.entityType.encodeToBinaryDIS(outputStream);
        this.alternativeEntityType.encodeToBinaryDIS(outputStream);
@@ -7868,7 +7873,7 @@ dis.FastEntityStatePdu = function()
    this.entity = 0;
 
    /** what force this entity is affiliated with, eg red, blue, neutral, etc */
-   this.forceId = 0;
+   this.forceID = 0;
 
    /** How many variable (nee articulation) parameters are in the variable length list */
    this.numberOfVariableParameters = 0;
@@ -7987,7 +7992,7 @@ dis.FastEntityStatePdu = function()
        this.site = inputStream.readUShort();
        this.application = inputStream.readUShort();
        this.entity = inputStream.readUShort();
-       this.forceId = inputStream.readUByte();
+       this.forceID = inputStream.readUByte();
        this.numberOfVariableParameters = inputStream.readByte();
        this.entityKind = inputStream.readUByte();
        this.domain = inputStream.readUByte();
@@ -8052,7 +8057,7 @@ dis.FastEntityStatePdu = function()
        outputStream.writeUShort(this.site);
        outputStream.writeUShort(this.application);
        outputStream.writeUShort(this.entity);
-       outputStream.writeUByte(this.forceId);
+       outputStream.writeUByte(this.forceID);
        outputStream.writeByte(this.numberOfVariableParameters);
        outputStream.writeUByte(this.entityKind);
        outputStream.writeUByte(this.domain);
