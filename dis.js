@@ -1,25 +1,25 @@
 if (typeof dis === "undefined")
    dis = {};
- 
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
 
 dis.CoordinateConversion = function()
  {
-     
+
     this.RADIANS_TO_DEGREES = 180.0/Math.PI;
     this.DEGREES_TO_RADIANS = Math.PI/180.0;
-    
+
     this.a = 6378137.0;    //semi major axis (WGS 84)
     this.b = 6356752.3142; //semi minor axis (WGS 84)
-    
+
     /**
      * Converts DIS xyz world coordinates to latitude and longitude (IN DEGREES). This algorithm may not be 100% accurate
      * near the poles. Uses WGS84 , though you can change the ellipsoid constants a and b if you want to use something
-     * else. These formulas were obtained from Military Handbook 600008. The code itself has been 
+     * else. These formulas were obtained from Military Handbook 600008. The code itself has been
      * translated from C to Java to Javascript over the years, so hold onto your hats.
-     * 
+     *
      * @param position {x:, y:, z:}
      * @return {latitude:, longitude: altitude:}
      */
@@ -42,7 +42,7 @@ dis.CoordinateConversion = function()
 
         eSquared = (a*a - b*b) / (a*a);
         ePrimeSquared = (a*a - b*b) / (b*b);
-        
+
         /**
          * Get the longitude.
          */
@@ -79,12 +79,12 @@ dis.CoordinateConversion = function()
         rSubN = (a*a) / Math.sqrt(((a*a) * (Math.cos(phi)*Math.cos(phi)) + ((b*b) * (Math.sin(phi)*Math.sin(phi)))));
 
         answer[2] = (W / Math.cos(phi)) - rSubN;
-    
+
         var result = {latitude:answer[0] * this.RADIANS_TO_DEGREES, longitude:answer[1] * this.RADIANS_TO_DEGREES, altitude:answer[2] * this.RADIANS_TO_DEGREES};
         return result;
 
     };
-    
+
     /**
      * Converts lat long and geodetic height (elevation) into DIS XYZ
      * This algorithm also uses the WGS84 ellipsoid, though you can change the values
@@ -96,7 +96,7 @@ dis.CoordinateConversion = function()
     {
         var latitudeRadians = latLonAlt.lat   * this.DEGREES_TO_RADIANS;
         var longtitudeRadians = latLonAlt.lon * this.DEGREES_TO_RADIANS;
-        
+
         //var a = 6378137.0; //semi major axis
         //var b = 6356752.3142; //semi minor axis
         var cosLat = Math.cos(latitudeRadians);
@@ -112,15 +112,15 @@ dis.CoordinateConversion = function()
         return {x:X, y:Y, z:Z};
     };
  };
- 
+
  exports.CoordinateConversion = dis.CoordinateConversion;
 /**
  * Some code to extract the entity apperance bit fields.<p>
- * 
+ *
  * The entityAppearance field in the espdu is a 32 bit integer. To save
- * space, several different fields are contained within it. 
+ * space, several different fields are contained within it.
  * Specifically:
- * 
+ *
  *  Name      bit position        Purpose
  *  ----      ------------        --------
  *  Paint            0            0 = uniform color, 1=camo
@@ -147,36 +147,36 @@ dis.CoordinateConversion = function()
  *  spot lights      28           0=off, 1=on
  *  interior lights  29           0=off, 1=on
  *  unused           30-31
- *  
+ *
  *  Typical use:
- *  
+ *
  *  var entityAppearance = new DisAppearance(espdu.entityAppearance);
  *  var damage = entityAppearance.getBitfield(3, 4);
- *  
+ *
  *  This returns the "damage" bitfield in bits 3-4.
- *  
+ *
  *  var mobility = entityAppearance.getBitfield(1, 1);
- *  
+ *
  *  Returns the mobility field, 0 = no mobo kill, 1 = mobility kill
- *  
+ *
  *  @author DMcG
  **/
 
 if (typeof dis === "undefined")
  dis = {};
- 
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
 
 /** Constructor. Takes the integer value extracted from the DIS Entity State Field appearance
- * 
+ *
  * @param {type} integerValue the entity appearance from the espdu
  * @returns {undefined}
  */
 dis.DisAppearance = function(integerValue)
 {
-    this.entityAppearance = integerValue; 
+    this.entityAppearance = integerValue;
 }
 
 /**
@@ -190,12 +190,12 @@ dis.DisAppearance.prototype.getTestMask = function()
     {
         mask = mask + this.bit_set(mask, idx);
     }
-    
+
     return mask;
 };
 
 /**
- * 
+ *
  * @param {integer} startPosition
  * @param {integer} finishPosition
  * @returns {integer}
@@ -208,24 +208,24 @@ dis.DisAppearance.prototype.getBitField = function(startPosition, finishPosition
         console.log("invalid start or finish for bitfield values: ", startPosition, " ", finishPosition);
         return 0;
     }
-    
+
     // Develop the mask. Addition is equivalent to setting multiple bits.
     var mask = 0;
     for(var idx = startPosition; idx <= finishPosition; idx++)
     {
         mask = mask + this.bit_set(0, idx);
     }
-        
+
     // do the bitmask
     var maskedValue = this.entityAppearance & mask;
     // Shift bits to get the normalized value
-    var fieldValue = maskedValue >>> startPosition;  
-    
+    var fieldValue = maskedValue >>> startPosition;
+
     return fieldValue;
 };
 
 /** Set the "bit" position in a number to 1
- * 
+ *
  * @param {integer}  num the number whose bit we are setting. Typically zero.
  * @param {integer} bit which bit to set
  * @return {integer} the number passed in, with the "bit"th bit flipped on.
@@ -241,7 +241,7 @@ exports.DisAppearance = dis.DisAppearance;
 
 if (typeof dis === "undefined")
    dis = {};
-   
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
@@ -250,73 +250,73 @@ dis.InputStream = function(binaryData)
 {
     this.dataView = new DataView(binaryData, 0); // data, byte offset
     this.currentPosition = 0;                    // ptr to "current" position in array
-    
+
     dis.InputStream.prototype.readUByte = function()
     {
         var data = this.dataView.getUint8(this.currentPosition);
         this.currentPosition = this.currentPosition + 1;
         return data;
     };
-    
+
     dis.InputStream.prototype.readByte = function()
     {
         var data = this.dataView.getInt8(this.currentPosition);
         this.currentPosition = this.currentPosition + 1;
         return data;
     };
-    
+
     dis.InputStream.prototype.readUShort = function()
     {
         var data = this.dataView.getUint16(this.currentPosition);
         this.currentPosition = this.currentPosition + 2;
         return data;
     };
-    
+
     dis.InputStream.prototype.readShort = function()
     {
         var data = this.dataView.getInt16(this.currentPosition);
         this.currentPosition = this.currentPosition + 2;
         return data;
     };
-    
+
     dis.InputStream.prototype.readUInt = function()
     {
         var data = this.dataView.getUint32(this.currentPosition);
         this.currentPosition = this.currentPosition + 4;
         return data;
     };
-    
+
     dis.InputStream.prototype.readInt = function()
     {
         var data = this.dataView.getInt32(this.currentPosition);
         this.currentPosition = this.currentPosition + 4;
         return data;
     };
-    
+
     /** Read a long integer. Assumes big endian format. Uses the BigInteger package. */
     dis.InputStream.prototype.readLongInt = function()
     {
         var data1 = this.dataView.getInt32(this.currentPosition);
         var data2 = this.dataView.getInt32(this.currentPosition + 4);
-        
+
         this.currentPosition = this.currentPosition + 8;
-        
+
     };
-   
+
     dis.InputStream.prototype.readFloat32 = function()
     {
         var data = this.dataView.getFloat32(this.currentPosition);
         this.currentPosition = this.currentPosition + 4;
         return data;
     };
-    
+
     dis.InputStream.prototype.readFloat64 = function()
     {
         var data = this.dataView.getFloat64(this.currentPosition);
         this.currentPosition = this.currentPosition + 8;
         return data;
     };
-    
+
     dis.InputStream.prototype.readLong = function()
     {
         console.log("Problem in dis.InputStream. Javascript cannot natively handle 64 bit ints");
@@ -329,7 +329,7 @@ dis.InputStream = function(binaryData)
 exports.InputStream = dis.InputStream;
 if (typeof dis === "undefined")
    dis = {};
-   
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
@@ -342,55 +342,55 @@ dis.OutputStream = function(binaryDataBuffer)
     this.binaryData = binaryDataBuffer;
     this.dataView = new DataView(this.binaryData); // data, byte offset
     this.currentPosition = 0;                    // ptr to current position in array
-    
+
     dis.OutputStream.prototype.writeUByte = function(userData)
-    {   
+    {
         this.dataView.setUint8(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 1;
     };
-    
+
     dis.OutputStream.prototype.writeByte = function(userData)
     {
         this.dataView.setInt8(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 1;
     };
-    
+
     dis.OutputStream.prototype.writeUShort = function(userData)
     {
         this.dataView.setUint16(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 2;
     };
-    
+
     dis.OutputStream.prototype.writeShort = function(userData)
     {
         this.dataView.setInt16(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 2;
     };
-    
+
     dis.OutputStream.prototype.writeUInt = function(userData)
     {
         this.dataView.setUint32(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 4;
     };
-    
+
     dis.OutputStream.prototype.writeInt = function(userData)
     {
         this.dataView.setInt32(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 4;
     };
-   
+
     dis.OutputStream.prototype.writeFloat32 = function(userData)
     {
         this.dataView.setFloat32(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 4;
     };
-    
+
     dis.OutputStream.prototype.writeFloat64 = function(userData)
     {
         this.dataView.setFloat64(this.currentPosition, userData);
         this.currentPosition = this.currentPosition + 8;
     };
-    
+
     dis.OutputStream.prototype.writeLong = function(userData)
     {
         console.log("Problem in dis.outputStream. Javascript cannot natively handle 64 bit ints");
@@ -405,34 +405,34 @@ exports.OutputStream = dis.OutputStream;
 
 if (typeof dis === "undefined")
  dis = {};
- 
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
- 
+
  /**
   * The PDU factory is responsible for decoding binary data and turning
   * it into the appropriate type of PDU.
-  * 
+  *
   * The websocket will typically send the web page a IEEE 1278.1 binary
   * array of data. It could be any one of dozens of PDUs. The start of
-  * all PDUs is the same--they have the same header. One of the fields in 
+  * all PDUs is the same--they have the same header. One of the fields in
   * the header is the PduType, an 8 bit integer with a unqiue value for
   * each type of PDU. We have to peak at that value, decide what type
   * of PDU to create of the binary we have received, and then decode it.
-  * 
+  *
   *     * @DMcG
   */
- 
+
  dis.PduFactory = function()
  {
-     
+
  };
- 
+
  /**
   * decode incoming binary data and
   * return the correct type of PDU.
-  * 
+  *
   * @param {type} data the IEEE 1278.1 binary data
   * @returns {Pdu} Returns an instance of some PDU, be it espdu, fire, detonation, etc. Exception if PduType not known.
   */
@@ -442,7 +442,7 @@ if (typeof exports === "undefined")
      var pduType = asUint8Array[2];
      var inputStream = new dis.InputStream(data);
      var newPdu = null;
-     
+
      try
      {
         switch(pduType)
@@ -455,7 +455,7 @@ if (typeof exports === "undefined")
             case 2:     // Fire
                 newPdu = new dis.FirePdu();
                 newPdu.initFromBinaryDIS(inputStream);
-                break; 
+                break;
 
             case 3:     // detonation
                 newPdu = new dis.DetonationPdu();
@@ -482,6 +482,11 @@ if (typeof exports === "undefined")
                 newPdu.initFromBinaryDIS(inputStream);
                 break;
 
+            case 25:    // Transmitter
+                newPdu = new dis.TransmitterPdu();
+                newPdu.initFromBinaryDIS(inputStream);
+                break;
+
             default:
                throw  "PduType: " + pduType + " Unrecognized PDUType. Add PDU in dis.PduFactory.";
         }
@@ -491,10 +496,10 @@ if (typeof exports === "undefined")
     {
       newPdu = null;
     }
-     
+
      return newPdu;
  };
- 
+
  dis.PduFactory.prototype.getPdusFromBundle = function(data)
  {
  }
@@ -505,37 +510,37 @@ exports.PduFactory = dis.PduFactory;
  * Sets up a local tangent place (ENU) coordinate system at a given location
  * and altitude, and handles conversions between geodetic, ECEF, and local
  * tangent plane coordinate systems.
- * 
+ *
  * For reference see  "Conversion of Geodetic coordinates to the Local
- * Tangent Plane", version 2.01, 
+ * Tangent Plane", version 2.01,
  * http://www.psas.pdx.edu/CoordinateSystem/Latitude_to_LocalTangent.pdf
- * 
- * and "Geodetic Systems", 
+ *
+ * and "Geodetic Systems",
  * http://wiki.gis.com/wiki/index.php/Geodetic_system#From_geodetic_coordinates_to_local_ENU_coordinates
- * 
+ *
  * There's also a bunch of ancient code from older versions that someone, somewhere,
  * lifted from a military handbook, originally written in C, translated to Java,
- * and now translated to Javascript. 
- * 
- * Terminology: 
- * 
+ * and now translated to Javascript.
+ *
+ * Terminology:
+ *
  * ECEF: earth centered, earth fixed coordinate system, same as DIS. Cartesian,
  * origin at center of the earth, z through north pole, x out the equator and
  * prime meridian, y out equator and 90 deg east. This coordinate system rotates
  * with the earth, ie the x axis always points out the prime meridian and equator
  * even as the earth rotates.
- * 
+ *
  * Geodetic: latitude, longitude, altitude.
- * 
+ *
  * WGS84: Shape of the earth, an ellipsoid roughly, with a and b the semimajor and semiminor axes
- * 
+ *
  * ENU: East, North, Up: local coordinate system with a given geodetic origin. Tangent
  * plane to the earth.
  *
  * All Errors mine
- * 
+ *
  * @DMcG
- * 
+ *
  * @param {float} lat latitude in degrees of the origin of the local tangent plane coordinate system
  * @param {float} lon longitude, in degrees, of origin
  * @param {float} alt altitude, in meters, of the origin of the local tangent plane coordinate system
@@ -543,18 +548,18 @@ exports.PduFactory = dis.PduFactory;
 
 if (typeof dis === "undefined")
  dis = {};
- 
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
- 
+
 /** Constructor, creates an object that can do coordinate systems conversions.
  * Takes a geodetic point that is the origin of a tangent plane to the surface
  * of the earth. This is useful for doing local simulation work. The local
  * coordinate system has postive x east, positive y north, and positive Z up,
  * aka an ENU coordinate system. Methods for converting from that coordinate system
  * to the DIS (ECEF) coordinate system or geotetic coordinate systems are provided.
- * 
+ *
  * @param {type} lat latitude, in degrees, of where the local tangent plane is located
  * @param {type} lon longitude, in degrees, of the origin of the local tangent plane
  * @param {type} alt altitude, in meters, of the origin of the local tangent plane
@@ -564,34 +569,34 @@ dis.RangeCoordinates = function(lat, lon, alt)
 {
     this.RADIANS_PER_DEGREE = 2 * Math.PI / 360.0;
     this.DEGREES_PER_RADIAN = 360.0 / (2* Math.PI);
-    
+
     /** WGS84 semimajor axis (constant) */
     this.a = 6378137.0;
-    
+
     /** WGS84 semiminor axis (constant) */
-    this.b = 6356752.3142; 
-    
+    this.b = 6356752.3142;
+
     /** Ellipsoidal Flatness (constant) */
     this.f = (this.a - this.b) / this.a;                      // Should be 3.3528107 X 10^-3
-    
+
     /** Eccentricity (constant) */
     this.e = Math.sqrt(this.f * (2 - this.f)); // Should be 8.1819191 X 10^-2
-    
+
     // The origin of the local, East-North-Up (ENU) coordinate system, in lat/lon degrees and meters.
     this.ENUOrigin = {};
     this.ENUOrigin.latitude  = lat;
     this.ENUOrigin.longitude = lon;
     this.ENUOrigin.altitude   = alt;
-    
+
     // Find the origin of the ENU in earth-centered, earth-fixed ECEF aka DIS coordinates
     this.ENUOriginInECEF = {};
     this.ENUOriginInECEF = this.latLonAltDegreesToECEF(lat, lon, alt);
 };
-    
+
     /** Determines N, the distance from a normal plane at the given
      * latitude to the Z-axis running through the center of the earth.
      * This is NOT the same as the distance to the center of the earth.
-     * 
+     *
      * @param {float} lambda the latitude, in radians.
      * @returns {float} distance in meters from the latitude to the axis of the earth
      */
@@ -601,10 +606,10 @@ dis.RangeCoordinates = function(lat, lon, alt)
         var val = this.a / Math.sqrt(1- ( Math.pow(this.e, 2) * Math.pow( Math.sin(lambda), 2) ) );
         return val;
     };
-    
+
     /**
      * Converts a latitude, longitude, and altitude object to DIS rectilinear
-     * coordinates, aka earth-centered, earth-fixed, rectilinear. 
+     * coordinates, aka earth-centered, earth-fixed, rectilinear.
      *
      * @param {latitude:longitude:altitude:} latLonAlt The lat/lon/alt, in degrees and meters
      * @returns {x, y, z}  rectilienar coordinates in ECEF, aka DIS coordinates
@@ -613,10 +618,10 @@ dis.RangeCoordinates = function(lat, lon, alt)
     {
         return this.latLonAltDegreesToECEF(latLonAlt.latitude, latLonAlt.longitude, latLonAlt.altitude);
     };
-    
+
     /**
      * Converts a latitude, longitude, and altitude to DIS rectilinear
-     * coordinates, aka earth-centered, earth-fixed, rectilinear. 
+     * coordinates, aka earth-centered, earth-fixed, rectilinear.
      *
      * @param {float} latitude (in radians)
      * @param {float} longitude (in radians)
@@ -630,13 +635,13 @@ dis.RangeCoordinates = function(lat, lon, alt)
        var x = (altitude + this.N(latitude)) * Math.cos(latitude) * Math.cos(longitude);
        var y = (altitude + this.N(latitude)) * Math.cos(latitude) * Math.sin(longitude);
        var z = (altitude + (1 - Math.pow(this.e, 2) )  * this.N(latitude)) * Math.sin(longitude);
-       
+
        var coordinates = {};
        coordinates.x = x;
        coordinates.y = y;
        coordinates.z = z;
         */
-       
+
         var cosLat = Math.cos(latitude);
         var sinLat = Math.sin(latitude);
 
@@ -648,9 +653,9 @@ dis.RangeCoordinates = function(lat, lon, alt)
 
         return {x:X, y:Y, z:Z};
     };
-    
+
     /*
-     * 
+     *
      * @param {type} latitude in degrees
      * @param {type} longitude in degrees
      * @param {type} altitude in meters
@@ -660,7 +665,7 @@ dis.RangeCoordinates = function(lat, lon, alt)
     {
         return this.latLonAltRadiansToECEF(latitude * this.RADIANS_PER_DEGREE, longitude * this.RADIANS_PER_DEGREE, altitude);
     };
-    
+
     /**
      * Converts DIS xyz world coordinates to latitude and longitude (IN DEGREES). This algorithm may not be 100% accurate
      * near the poles. Uses WGS84 , though you can change the ellipsoid constants a and b if you want to use something
@@ -676,7 +681,7 @@ dis.RangeCoordinates = function(lat, lon, alt)
         var x = position.x;
         var y = position.y;
         var z = position.z;
-        
+
         var answer = [];
         answer[0] = 0.0;
         answer[1] = 0.0;
@@ -734,27 +739,27 @@ dis.RangeCoordinates = function(lat, lon, alt)
         return result;
 
     };
-    
+
    /**
     *  Converts an ECEF position to the local ENU coordinate system. Units are meters,
     *  and the origin of the ENU coordinate system is set in the constructor.
-    *  
+    *
     *  @param {x:y:z:} ecefPosition ecef position (in meters)
-    *  @returns {x:y:z:} object with x, y, and z local coordinates, ENU 
+    *  @returns {x:y:z:} object with x, y, and z local coordinates, ENU
     */
    dis.RangeCoordinates.prototype.ECEFObjectToENU = function(ecefPosition)
    {
        return this.ECEFtoENU(ecefPosition.x, ecefPosition.y, ecefPosition.z);
    };
-  
+
    /**
     *  Converts an ECEF position to the local ENU coordinate system. Units are meters,
     *  and the origin of the ENU coordinate system is set in the constructor.
-    *  
+    *
     *  @param {float} X the X coordinate of the ECEF position
-    *  @param {float} Y the Y coordinate 
+    *  @param {float} Y the Y coordinate
     *  @param {float} Z the Z coordinate
-    *  @returns {x:y:z:} object with x, y, and z local coordinates, ENU 
+    *  @returns {x:y:z:} object with x, y, and z local coordinates, ENU
     */
    dis.RangeCoordinates.prototype.ECEFtoENU = function(X, Y, Z)
    {
@@ -762,21 +767,21 @@ dis.RangeCoordinates = function(lat, lon, alt)
      var Xr = this.ENUOriginInECEF.x;
      var Yr = this.ENUOriginInECEF.y;
      var Zr = this.ENUOriginInECEF.z;
-     
+
      var originLonRadians = this.ENUOrigin.longitude * this.RADIANS_PER_DEGREE;
      var originLatRadians = this.ENUOrigin.latitude * this.RADIANS_PER_DEGREE;
-     
+
      e = -(Math.sin(originLonRadians)) * (X-Xr) + Math.cos(originLonRadians) * (Y-Yr);
      n = -(Math.sin(originLatRadians))  * Math.cos(originLonRadians) * (X-Xr) - Math.sin(originLatRadians) * Math.sin(originLonRadians) * (Y-Yr) + Math.cos(originLatRadians) * (Z-Zr);
      u = Math.cos(originLatRadians) * Math.cos(originLonRadians) * (X-Xr) + Math.cos(originLatRadians) * Math.sin(originLonRadians) * (Y-Yr) + Math.sin(originLatRadians) * (Z-Zr);
-    
+
      // Local coordinate system x, y, z
      return {x:e, y:n, z:u};
    };
-   
+
    /**
    * Converts a local coordinate system / ENU/ Local Tangent Plane object to ECEF, aka DIS coordinates.
-   * 
+   *
    * @param enuPosition {x:y:z:} local coordinate object
    * @returns {x:y:z:} point in ECEF / DIS coordinate system
    */
@@ -784,10 +789,10 @@ dis.RangeCoordinates = function(lat, lon, alt)
    {
        return this.ENUtoECEF(enuPosition.x, enuPosition.y, enuPosition.z);
    };
-   
+
   /**
    * Converts a local coordinate system / ENU/ Local Tangent Plane point to ECEF, aka DIS coordinates.
-   * 
+   *
    * @param localX {float} local coordinate system X
    * @param localY {float} local coordinate system Y
    * @param localZ {float} local coordinate system Z
@@ -799,33 +804,33 @@ dis.RangeCoordinates = function(lat, lon, alt)
        var Xr = this.ENUOriginInECEF.x;
        var Yr = this.ENUOriginInECEF.y;
        var Zr = this.ENUOriginInECEF.z;
-       
+
        var refLong = this.ENUOrigin.longitude;
-       var refLat = this.ENUOrigin.latitude;       
-      
-      /** original code this was copied from 
-      
+       var refLat = this.ENUOrigin.latitude;
+
+      /** original code this was copied from
+
        function [X, Y, Z] = enu2xyz(refLat, refLong, refH, e, n, u)
   % Convert east, north, up coordinates (labeled e, n, u) to ECEF
   % coordinates. The reference point (phi, lambda, h) must be given. All distances are in metres
- 
+
   [Xr,Yr,Zr] = llh2xyz(refLat,refLong, refH); % location of reference point
- 
+
   X = -sin(refLong)*e - cos(refLong)*sin(refLat)*n + cos(refLong)*cos(refLat)*u + Xr;
   Y = cos(refLong)*e - sin(refLong)*sin(refLat)*n + cos(refLat)*sin(refLong)*u + Yr;
   Z = cos(refLat)*n + sin(refLat)*u + Zr;
        */
- 
+
        X = -(Math.sin(refLong)) * localX - Math.cos(refLong) * Math.sin(refLat) * localY + Math.cos(refLong) * Math.cos(refLat) * localZ + Xr;
        Y = Math.cos(refLong) * localX - Math.sin(refLong) * Math.sin(refLat) * localY + Math.cos(refLat) * Math.sin(refLong) * localZ + Yr;
        Z = Math.cos(refLat)  * localY + Math.sin(refLat) * localZ + Zr;
-       
+
        return {x:X, y:Y, z:Z};
    };
-   
+
 exports.RangeCoordinates = dis.RangeCoordinates;if (typeof dis === "undefined")
    dis = {};
-   
+
 // Support for node.js style modules; ignore if not using node.js require
 if (typeof exports === "undefined")
    exports = {};
@@ -839,10 +844,10 @@ if (typeof exports === "undefined")
  * are clamped (or filled) to exactly 11 bytes, so "This is a long string"
  * will be clamped to "This is a l" (in charachter codes) and "foo" will
  * be filled to "foo\0\0\0\0\0\0\0\0".<p>
- * 
+ *
  * It is recommended that only ASCII character set (character set = 1)
  * be used.
- * 
+ *
  * @returns {undefined}
  */
 dis.StringConversion = function()
@@ -853,30 +858,30 @@ dis.StringConversion = function()
  * Given a string, returns a DIS marking field. The character set is set to
  * 1, for ascii. The length is clamped to 11, and zero-filled if the string
  * is shorter than 11.
- * 
- * @returns {array} disMarking field, 12 bytes long, character set = 1 (ascii) in 0, zero-filled to 11 character codes 
+ *
+ * @returns {array} disMarking field, 12 bytes long, character set = 1 (ascii) in 0, zero-filled to 11 character codes
  */
 dis.StringConversion.prototype.StringToDisMarking = function(markingString)
 {
     var byteMarking = [];
-    
+
     // character set 1 = ascii
     byteMarking.push(1);
-    
+
     var markingLength = markingString.length;
-    
+
     // Clamp it to 11 bytes of character data
     if(markingLength > 11)
         markingLength = 11;
-    
+
     // If the string is shorter than 11 bytes, we zero-fill the array
     var  diff = 11 - markingLength;
-    
+
     for(var idx = 0; idx < markingLength; idx++)
     {
         byteMarking.push(markingString.charCodeAt(idx));
     }
-    
+
     for(var idx = markingLength; idx < 11; idx++)
     {
         byteMarking.push(0);
@@ -887,19 +892,19 @@ dis.StringConversion.prototype.StringToDisMarking = function(markingString)
 
 /**
  * Given a DIS marking field, returns a string. Assumes always ascii.
- * 
+ *
  * @param {array} disMarking dis marking field, [0] = character set, the rest character codes
  * @returns {string} string equivalent of the marking field
  */
 dis.StringConversion.prototype.DisMarkingToString = function(disMarking)
 {
     var marking = "";
-    
+
     for(var idx = 1; idx < disMarking.length; idx++)
     {
         marking = marking + String.fromCharCode(disMarking[idx]);
     }
-    
+
     return marking;
 };
 
@@ -955,10 +960,10 @@ dis.AcknowledgePdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** type of message being acknowledged */
    this.acknowledgeFlag = 0;
@@ -1052,10 +1057,10 @@ dis.AcknowledgeReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** ack flags */
    this.acknowledgeFlag = 0;
@@ -1137,7 +1142,7 @@ dis.AcousticBeamData = function()
    this.pad2 = 0;
 
    /** fundamental data parameters */
-   this.fundamentalDataParameters = new dis.AcousticBeamFundamentalParameter(); 
+   this.fundamentalDataParameters = new dis.AcousticBeamFundamentalParameter();
 
   dis.AcousticBeamData.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -1365,14 +1370,14 @@ dis.AcousticEmitterSystemData = function()
    this.pad2 = 0;
 
    /** This field shall specify the system for a particular UA emitter. */
-   this.acousticEmitterSystem = new dis.AcousticEmitterSystem(); 
+   this.acousticEmitterSystem = new dis.AcousticEmitterSystem();
 
    /** Represents the location wrt the entity */
-   this.emitterLocation = new dis.Vector3Float(); 
+   this.emitterLocation = new dis.Vector3Float();
 
    /** For each beam in numberOfBeams, an emitter system. This is not right--the beam records need to be at the end of the PDU, rather than attached to each system. */
     this.beamRecords = new Array();
- 
+
   dis.AcousticEmitterSystemData.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -1454,10 +1459,10 @@ dis.ActionRequestPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Request ID that is unique */
    this.requestID = 0;
@@ -1473,10 +1478,10 @@ dis.ActionRequestPdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.ActionRequestPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -1586,10 +1591,10 @@ dis.ActionRequestReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** level of reliability service used for this transaction */
    this.requiredReliabilityService = 0;
@@ -1614,10 +1619,10 @@ dis.ActionRequestReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.ActionRequestReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -1733,10 +1738,10 @@ dis.ActionResponsePdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Request ID that is unique */
    this.requestID = 0;
@@ -1752,10 +1757,10 @@ dis.ActionResponsePdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.ActionResponsePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -1865,10 +1870,10 @@ dis.ActionResponseReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** request ID */
    this.requestID = 0;
@@ -1884,10 +1889,10 @@ dis.ActionResponseReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.ActionResponseReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -2102,7 +2107,7 @@ dis.AggregateStatePdu = function()
    this.padding = 0;
 
    /** ID of aggregated entities */
-   this.aggregateID = new dis.EntityID(); 
+   this.aggregateID = new dis.EntityID();
 
    /** force ID */
    this.forceID = 0;
@@ -2111,25 +2116,25 @@ dis.AggregateStatePdu = function()
    this.aggregateState = 0;
 
    /** entity type of the aggregated entities */
-   this.aggregateType = new dis.EntityType(); 
+   this.aggregateType = new dis.EntityType();
 
    /** formation of aggregated entities */
    this.formation = 0;
 
    /** marking for aggregate; first char is charset type, rest is char data */
-   this.aggregateMarking = new dis.AggregateMarking(); 
+   this.aggregateMarking = new dis.AggregateMarking();
 
    /** dimensions of bounding box for the aggregated entities, origin at the center of mass */
-   this.dimensions = new dis.Vector3Float(); 
+   this.dimensions = new dis.Vector3Float();
 
    /** orientation of the bounding box */
-   this.orientation = new dis.Orientation(); 
+   this.orientation = new dis.Orientation();
 
    /** center of mass of the aggregation */
-   this.centerOfMass = new dis.Vector3Double(); 
+   this.centerOfMass = new dis.Vector3Double();
 
    /** velocity of aggregation */
-   this.velocity = new dis.Vector3Float(); 
+   this.velocity = new dis.Vector3Float();
 
    /** number of aggregates */
    this.numberOfDisAggregates = 0;
@@ -2145,25 +2150,25 @@ dis.AggregateStatePdu = function()
 
    /** aggregates  list */
     this.aggregateIDList = new Array();
- 
+
    /** entity ID list */
     this.entityIDList = new Array();
- 
+
    /** ^^^padding to put the start of the next list on a 32 bit boundary. This needs to be fixed */
    this.pad2 = 0;
 
    /** silent entity types */
     this.silentAggregateSystemList = new Array();
- 
+
    /** silent entity types */
     this.silentEntitySystemList = new Array();
- 
+
    /** number of variable datum records */
    this.numberOfVariableDatumRecords = 0;
 
    /** variableDatums */
     this.variableDatumList = new Array();
- 
+
   dis.AggregateStatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -2431,10 +2436,10 @@ if (typeof exports === "undefined")
 dis.AntennaLocation = function()
 {
    /** Location of the radiating portion of the antenna in world    coordinates */
-   this.antennaLocation = new dis.Vector3Double(); 
+   this.antennaLocation = new dis.Vector3Double();
 
    /** Location of the radiating portion of the antenna     in entity coordinates */
-   this.relativeAntennaLocation = new dis.Vector3Float(); 
+   this.relativeAntennaLocation = new dis.Vector3Float();
 
   dis.AntennaLocation.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -2546,10 +2551,10 @@ dis.ArealObjectStatePdu = function()
    this.padding = 0;
 
    /** Object in synthetic environment */
-   this.objectID = new dis.EntityID(); 
+   this.objectID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.referencedObjectID = new dis.EntityID(); 
+   this.referencedObjectID = new dis.EntityID();
 
    /** unique update number of each state transition of an object */
    this.updateNumber = 0;
@@ -2561,23 +2566,23 @@ dis.ArealObjectStatePdu = function()
    this.modifications = 0;
 
    /** Object type */
-   this.objectType = new dis.EntityType(); 
+   this.objectType = new dis.EntityType();
 
    /** Object appearance */
-   this.objectAppearance = new dis.SixByteChunk(); 
+   this.objectAppearance = new dis.SixByteChunk();
 
    /** Number of points */
    this.numberOfPoints = 0;
 
    /** requesterID */
-   this.requesterID = new dis.SimulationAddress(); 
+   this.requesterID = new dis.SimulationAddress();
 
    /** receiver ID */
-   this.receivingID = new dis.SimulationAddress(); 
+   this.receivingID = new dis.SimulationAddress();
 
    /** location of object */
     this.objectLocation = new Array();
- 
+
   dis.ArealObjectStatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -2719,7 +2724,7 @@ if (typeof exports === "undefined")
 dis.BeamAntennaPattern = function()
 {
    /** The rotation that transformst he reference coordinate sytem     into the beam coordinate system. Either world coordinates or entity coordinates may be used as the     reference coordinate system, as specified by teh reference system field of the antenna pattern record. */
-   this.beamDirection = new dis.Orientation(); 
+   this.beamDirection = new dis.Orientation();
 
    this.azimuthBeamwidth = 0;
 
@@ -2858,7 +2863,7 @@ if (typeof exports === "undefined")
 dis.BurstDescriptor = function()
 {
    /** What munition was used in the burst */
-   this.munition = new dis.EntityType(); 
+   this.munition = new dis.EntityType();
 
    /** type of warhead */
    this.warhead = 0;
@@ -2988,25 +2993,25 @@ dis.CollisionElasticPdu = function()
    this.padding = 0;
 
    /** ID of the entity that issued the collision PDU */
-   this.issuingEntityID = new dis.EntityID(); 
+   this.issuingEntityID = new dis.EntityID();
 
    /** ID of entity that has collided with the issuing entity ID */
-   this.collidingEntityID = new dis.EntityID(); 
+   this.collidingEntityID = new dis.EntityID();
 
    /** ID of event */
-   this.collisionEventID = new dis.EventID(); 
+   this.collisionEventID = new dis.EventID();
 
    /** some padding */
    this.pad = 0;
 
    /** velocity at collision */
-   this.contactVelocity = new dis.Vector3Float(); 
+   this.contactVelocity = new dis.Vector3Float();
 
    /** mass of issuing entity */
    this.mass = 0;
 
    /** Location with respect to entity the issuing entity collided with */
-   this.location = new dis.Vector3Float(); 
+   this.location = new dis.Vector3Float();
 
    /** tensor values */
    this.collisionResultXX = 0;
@@ -3027,7 +3032,7 @@ dis.CollisionElasticPdu = function()
    this.collisionResultZZ = 0;
 
    /** This record shall represent the normal vector to the surface at the point of collision detection. The surface normal shall be represented in world coordinates. */
-   this.unitSurfaceNormal = new dis.Vector3Float(); 
+   this.unitSurfaceNormal = new dis.Vector3Float();
 
    /** This field shall represent the degree to which energy is conserved in a collision */
    this.coefficientOfRestitution = 0;
@@ -3135,13 +3140,13 @@ dis.CollisionPdu = function()
    this.padding = 0;
 
    /** ID of the entity that issued the collision PDU */
-   this.issuingEntityID = new dis.EntityID(); 
+   this.issuingEntityID = new dis.EntityID();
 
    /** ID of entity that has collided with the issuing entity ID */
-   this.collidingEntityID = new dis.EntityID(); 
+   this.collidingEntityID = new dis.EntityID();
 
    /** ID of event */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    /** ID of event */
    this.collisionType = 0;
@@ -3150,13 +3155,13 @@ dis.CollisionPdu = function()
    this.pad = 0;
 
    /** velocity at collision */
-   this.velocity = new dis.Vector3Float(); 
+   this.velocity = new dis.Vector3Float();
 
    /** mass of issuing entity */
    this.mass = 0;
 
    /** Location with respect to entity the issuing entity collided with */
-   this.location = new dis.Vector3Float(); 
+   this.location = new dis.Vector3Float();
 
   dis.CollisionPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -3247,10 +3252,10 @@ dis.CommentPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Number of fixed datum records */
    this.numberOfFixedDatumRecords = 0;
@@ -3260,10 +3265,10 @@ dis.CommentPdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.CommentPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -3369,10 +3374,10 @@ dis.CommentReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Fixed datum record count */
    this.numberOfFixedDatumRecords = 0;
@@ -3382,10 +3387,10 @@ dis.CommentReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.CommentReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -3491,10 +3496,10 @@ dis.CreateEntityPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Identifier for the request */
    this.requestID = 0;
@@ -3578,10 +3583,10 @@ dis.CreateEntityReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** level of reliability service used for this transaction */
    this.requiredReliabilityService = 0;
@@ -3680,10 +3685,10 @@ dis.DataPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** ID of request */
    this.requestID = 0;
@@ -3699,10 +3704,10 @@ dis.DataPdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.DataPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -3769,6 +3774,17 @@ exports.DataPdu = dis.DataPdu;
 
 // End of DataPdu class
 
+
+// node.js module support
+
+dis.DataPdu = function(){
+
+}; // end of class
+
+exports.TransmitterPdu = dis.TransmitterPdu;
+
+// End of TransmitterPdu class
+
 /**
  * Section 5.3.6.8. Request for data from an entity. COMPLETE
  *
@@ -3812,10 +3828,10 @@ dis.DataQueryPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** ID of request */
    this.requestID = 0;
@@ -3831,10 +3847,10 @@ dis.DataQueryPdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.DataQueryPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -3944,10 +3960,10 @@ dis.DataQueryReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** level of reliability service used for this transaction */
    this.requiredReliabilityService = 0;
@@ -3972,10 +3988,10 @@ dis.DataQueryReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.DataQueryReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -4091,10 +4107,10 @@ dis.DataReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Request ID */
    this.requestID = 0;
@@ -4116,10 +4132,10 @@ dis.DataReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.DataReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -4218,10 +4234,10 @@ dis.DeadReckoningParameter = function()
    this.otherParameters = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
    /** Linear acceleration of the entity */
-   this.entityLinearAcceleration = new dis.Vector3Float(); 
+   this.entityLinearAcceleration = new dis.Vector3Float();
 
    /** angular velocity of the entity */
-   this.entityAngularVelocity = new dis.Vector3Float(); 
+   this.entityAngularVelocity = new dis.Vector3Float();
 
   dis.DeadReckoningParameter.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -4296,13 +4312,13 @@ dis.DesignatorPdu = function()
    this.padding = 0;
 
    /** ID of the entity designating */
-   this.designatingEntityID = new dis.EntityID(); 
+   this.designatingEntityID = new dis.EntityID();
 
    /** This field shall specify a unique emitter database number assigned to  differentiate between otherwise similar or identical emitter beams within an emitter system. */
    this.codeName = 0;
 
    /** ID of the entity being designated */
-   this.designatedEntityID = new dis.EntityID(); 
+   this.designatedEntityID = new dis.EntityID();
 
    /** This field shall identify the designator code being used by the designating entity  */
    this.designatorCode = 0;
@@ -4314,10 +4330,10 @@ dis.DesignatorPdu = function()
    this.designatorWavelength = 0;
 
    /** designtor spot wrt the designated entity */
-   this.designatorSpotWrtDesignated = new dis.Vector3Float(); 
+   this.designatorSpotWrtDesignated = new dis.Vector3Float();
 
    /** designtor spot wrt the designated entity */
-   this.designatorSpotLocation = new dis.Vector3Double(); 
+   this.designatorSpotLocation = new dis.Vector3Double();
 
    /** Dead reckoning algorithm */
    this.deadReckoningAlgorithm = 0;
@@ -4329,7 +4345,7 @@ dis.DesignatorPdu = function()
    this.padding2 = 0;
 
    /** linear accelleration of entity */
-   this.entityLinearAcceleration = new dis.Vector3Float(); 
+   this.entityLinearAcceleration = new dis.Vector3Float();
 
   dis.DesignatorPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -4428,28 +4444,28 @@ dis.DetonationPdu = function()
    this.padding = 0;
 
    /** ID of the entity that shot */
-   this.firingEntityID = new dis.EntityID(); 
+   this.firingEntityID = new dis.EntityID();
 
    /** ID of the entity that is being shot at */
-   this.targetEntityID = new dis.EntityID(); 
+   this.targetEntityID = new dis.EntityID();
 
    /** ID of muntion that was fired */
-   this.munitionID = new dis.EntityID(); 
+   this.munitionID = new dis.EntityID();
 
    /** ID firing event */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    /** ID firing event */
-   this.velocity = new dis.Vector3Float(); 
+   this.velocity = new dis.Vector3Float();
 
    /** where the detonation is, in world coordinates */
-   this.locationInWorldCoordinates = new dis.Vector3Double(); 
+   this.locationInWorldCoordinates = new dis.Vector3Double();
 
    /** Describes munition used */
-   this.burstDescriptor = new dis.BurstDescriptor(); 
+   this.burstDescriptor = new dis.BurstDescriptor();
 
    /** location of the detonation or impact in the target entity's coordinate system. This information should be used for damage assessment. */
-   this.locationInEntityCoordinates = new dis.Vector3Float(); 
+   this.locationInEntityCoordinates = new dis.Vector3Float();
 
    /** result of the explosion */
    this.detonationResult = 0;
@@ -4461,7 +4477,7 @@ dis.DetonationPdu = function()
    this.pad = 0;
 
     this.articulationParameters = new Array();
- 
+
   dis.DetonationPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -4677,7 +4693,7 @@ dis.ElectronicEmissionBeamData = function()
    this.beamParameterIndex = 0;
 
    /** Fundamental parameter data such as frequency range, beam sweep, etc. */
-   this.fundamentalParameterData = new dis.FundamentalParameterData(); 
+   this.fundamentalParameterData = new dis.FundamentalParameterData();
 
    /** beam function of a particular beam */
    this.beamFunction = 0;
@@ -4696,7 +4712,7 @@ dis.ElectronicEmissionBeamData = function()
 
    /** variable length list of track/jam targets */
     this.trackJamTargets = new Array();
- 
+
   dis.ElectronicEmissionBeamData.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -4774,14 +4790,14 @@ dis.ElectronicEmissionSystemData = function()
    this.emissionsPadding2 = 0;
 
    /** This field shall specify information about a particular emitter system */
-   this.emitterSystem = new dis.EmitterSystem(); 
+   this.emitterSystem = new dis.EmitterSystem();
 
    /** Location with respect to the entity */
-   this.location = new dis.Vector3Float(); 
+   this.location = new dis.Vector3Float();
 
    /** variable length list of beam data records */
     this.beamDataRecords = new Array();
- 
+
   dis.ElectronicEmissionSystemData.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -4863,10 +4879,10 @@ dis.ElectronicEmissionsPdu = function()
    this.padding = 0;
 
    /** ID of the entity emitting */
-   this.emittingEntityID = new dis.EntityID(); 
+   this.emittingEntityID = new dis.EntityID();
 
    /** ID of event */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    /** This field shall be used to indicate if the data in the PDU represents a state update or just data that has changed since issuance of the last Electromagnetic Emission PDU [relative to the identified entity and emission system(s)]. */
    this.stateUpdateIndicator = 0;
@@ -4879,7 +4895,7 @@ dis.ElectronicEmissionsPdu = function()
 
    /** Electronic emmissions systems */
     this.systems = new Array();
- 
+
   dis.ElectronicEmissionsPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -5223,7 +5239,7 @@ dis.EntityStatePdu = function()
    this.padding = 0;
 
    /** Unique ID for an entity that is tied to this state information */
-   this.entityID = new dis.EntityID(); 
+   this.entityID = new dis.EntityID();
 
    /** What force this entity is affiliated with, eg red, blue, neutral, etc */
    this.forceID = 0;
@@ -5232,34 +5248,34 @@ dis.EntityStatePdu = function()
    this.numberOfArticulationParameters = 0;
 
    /** Describes the type of entity in the world */
-   this.entityType = new dis.EntityType(); 
+   this.entityType = new dis.EntityType();
 
-   this.alternativeEntityType = new dis.EntityType(); 
+   this.alternativeEntityType = new dis.EntityType();
 
    /** Describes the speed of the entity in the world */
-   this.entityLinearVelocity = new dis.Vector3Float(); 
+   this.entityLinearVelocity = new dis.Vector3Float();
 
    /** describes the location of the entity in the world */
-   this.entityLocation = new dis.Vector3Double(); 
+   this.entityLocation = new dis.Vector3Double();
 
    /** describes the orientation of the entity, in euler angles */
-   this.entityOrientation = new dis.Orientation(); 
+   this.entityOrientation = new dis.Orientation();
 
    /** a series of bit flags that are used to help draw the entity, such as smoking, on fire, etc. */
    this.entityAppearance = 0;
 
    /** parameters used for dead reckoning */
-   this.deadReckoningParameters = new dis.DeadReckoningParameter(); 
+   this.deadReckoningParameters = new dis.DeadReckoningParameter();
 
    /** characters that can be used for debugging, or to draw unique strings on the side of entities in the world */
-   this.marking = new dis.Marking(); 
+   this.marking = new dis.Marking();
 
    /** a series of bit flags */
    this.capabilities = 0;
 
    /** variable length list of articulation parameters */
     this.articulationParameters = new Array();
- 
+
   dis.EntityStatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -5369,7 +5385,7 @@ dis.EntityStateUpdatePdu = function()
    this.padding = 0;
 
    /** This field shall identify the entity issuing the PDU */
-   this.entityID = new dis.EntityID(); 
+   this.entityID = new dis.EntityID();
 
    /** Padding */
    this.padding1 = 0;
@@ -5378,19 +5394,19 @@ dis.EntityStateUpdatePdu = function()
    this.numberOfArticulationParameters = 0;
 
    /** Describes the speed of the entity in the world */
-   this.entityLinearVelocity = new dis.Vector3Float(); 
+   this.entityLinearVelocity = new dis.Vector3Float();
 
    /** describes the location of the entity in the world */
-   this.entityLocation = new dis.Vector3Double(); 
+   this.entityLocation = new dis.Vector3Double();
 
    /** describes the orientation of the entity, in euler angles */
-   this.entityOrientation = new dis.Orientation(); 
+   this.entityOrientation = new dis.Orientation();
 
    /** a series of bit flags that are used to help draw the entity, such as smoking, on fire, etc. */
    this.entityAppearance = 0;
 
     this.articulationParameters = new Array();
- 
+
   dis.EntityStateUpdatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -5628,10 +5644,10 @@ dis.EnvironmentalProcessPdu = function()
    this.padding = 0;
 
    /** Environmental process ID */
-   this.environementalProcessID = new dis.EntityID(); 
+   this.environementalProcessID = new dis.EntityID();
 
    /** Environment type */
-   this.environmentType = new dis.EntityType(); 
+   this.environmentType = new dis.EntityType();
 
    /** model type */
    this.modelType = 0;
@@ -5647,7 +5663,7 @@ dis.EnvironmentalProcessPdu = function()
 
    /** environemt records */
     this.environmentRecords = new Array();
- 
+
   dis.EnvironmentalProcessPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -5797,10 +5813,10 @@ dis.EventReportPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Type of event */
    this.eventType = 0;
@@ -5816,10 +5832,10 @@ dis.EventReportPdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.EventReportPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -5929,10 +5945,10 @@ dis.EventReportReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Event type */
    this.eventType = 0;
@@ -5948,10 +5964,10 @@ dis.EventReportReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.EventReportReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -6174,7 +6190,7 @@ dis.FastEntityStatePdu = function()
 
    /** variable length list of articulation parameters */
     this.articulationParameters = new Array();
- 
+
   dis.FastEntityStatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -6350,27 +6366,27 @@ dis.FirePdu = function()
    this.padding = 0;
 
    /** ID of the entity that shot */
-   this.firingEntityID = new dis.EntityID(); 
+   this.firingEntityID = new dis.EntityID();
 
    /** ID of the entity that is being shot at */
-   this.targetEntityID = new dis.EntityID(); 
+   this.targetEntityID = new dis.EntityID();
 
    /** ID of the munition that is being shot */
-   this.munitionID = new dis.EntityID(); 
+   this.munitionID = new dis.EntityID();
 
    /** ID of event */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    this.fireMissionIndex = 0;
 
    /** location of the firing event */
-   this.locationInWorldCoordinates = new dis.Vector3Double(); 
+   this.locationInWorldCoordinates = new dis.Vector3Double();
 
    /** Describes munitions used in the firing event */
-   this.burstDescriptor = new dis.BurstDescriptor(); 
+   this.burstDescriptor = new dis.BurstDescriptor();
 
    /** Velocity of the ammunition */
-   this.velocity = new dis.Vector3Float(); 
+   this.velocity = new dis.Vector3Float();
 
    /** range to the target. Note the word range is a SQL reserved word. */
    this.rangeToTarget = 0;
@@ -6683,7 +6699,7 @@ exports.FundamentalParameterDataIff = dis.FundamentalParameterDataIff;
 // End of FundamentalParameterDataIff class
 
 /**
- * 5.2.44: Grid data record, a common abstract superclass for several subtypes 
+ * 5.2.44: Grid data record, a common abstract superclass for several subtypes
  *
  * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
@@ -6761,7 +6777,7 @@ dis.GridAxisRecordRepresentation0 = function()
 
    /** variable length list of data parameters ^^^this is wrong--need padding as well */
     this.dataValues = new Array();
- 
+
   dis.GridAxisRecordRepresentation0.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -6834,7 +6850,7 @@ dis.GridAxisRecordRepresentation1 = function()
 
    /** variable length list of data parameters ^^^this is wrong--need padding as well */
     this.dataValues = new Array();
- 
+
   dis.GridAxisRecordRepresentation1.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -6905,7 +6921,7 @@ dis.GridAxisRecordRepresentation2 = function()
 
    /** variable length list of data parameters ^^^this is wrong--need padding as well */
     this.dataValues = new Array();
- 
+
   dis.GridAxisRecordRepresentation2.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -6983,7 +6999,7 @@ dis.GriddedDataPdu = function()
    this.padding = 0;
 
    /** environmental simulation application ID */
-   this.environmentalSimulationApplicationID = new dis.EntityID(); 
+   this.environmentalSimulationApplicationID = new dis.EntityID();
 
    /** unique identifier for each piece of enviornmental data */
    this.fieldNumber = 0;
@@ -7004,10 +7020,10 @@ dis.GriddedDataPdu = function()
    this.constantGrid = 0;
 
    /** type of environment */
-   this.environmentType = new dis.EntityType(); 
+   this.environmentType = new dis.EntityType();
 
    /** orientation of the data grid */
-   this.orientation = new dis.Orientation(); 
+   this.orientation = new dis.Orientation();
 
    /** valid time of the enviormental data sample, 64 bit unsigned int */
    this.sampleTime = 0;
@@ -7026,7 +7042,7 @@ dis.GriddedDataPdu = function()
 
    /** Grid data ^^^This is wrong */
     this.gridDataList = new Array();
- 
+
   dis.GriddedDataPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -7140,22 +7156,22 @@ dis.IffAtcNavAidsLayer1Pdu = function()
    this.padding = 0;
 
    /** ID of the entity that is the source of the emissions */
-   this.emittingEntityId = new dis.EntityID(); 
+   this.emittingEntityId = new dis.EntityID();
 
    /** Number generated by the issuing simulation to associate realted events. */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    /** Location wrt entity. There is some ambugiuity in the standard here, but this is the order it is listed in the table. */
-   this.location = new dis.Vector3Float(); 
+   this.location = new dis.Vector3Float();
 
    /** System ID information */
-   this.systemID = new dis.SystemID(); 
+   this.systemID = new dis.SystemID();
 
    /** padding */
    this.pad2 = 0;
 
    /** fundamental parameters */
-   this.fundamentalParameters = new dis.IffFundamentalData(); 
+   this.fundamentalParameters = new dis.IffFundamentalData();
 
   dis.IffAtcNavAidsLayer1Pdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -7242,35 +7258,35 @@ dis.IffAtcNavAidsLayer2Pdu = function()
    this.padding = 0;
 
    /** ID of the entity that is the source of the emissions */
-   this.emittingEntityId = new dis.EntityID(); 
+   this.emittingEntityId = new dis.EntityID();
 
    /** Number generated by the issuing simulation to associate realted events. */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    /** Location wrt entity. There is some ambugiuity in the standard here, but this is the order it is listed in the table. */
-   this.location = new dis.Vector3Float(); 
+   this.location = new dis.Vector3Float();
 
    /** System ID information */
-   this.systemID = new dis.SystemID(); 
+   this.systemID = new dis.SystemID();
 
    /** padding */
    this.pad2 = 0;
 
    /** fundamental parameters */
-   this.fundamentalParameters = new dis.IffFundamentalData(); 
+   this.fundamentalParameters = new dis.IffFundamentalData();
 
    /** layer header */
-   this.layerHeader = new dis.LayerHeader(); 
+   this.layerHeader = new dis.LayerHeader();
 
    /** beam data */
-   this.beamData = new dis.BeamData(); 
+   this.beamData = new dis.BeamData();
 
    /** Secondary operational data, 5.2.57 */
-   this.secondaryOperationalData = new dis.BeamData(); 
+   this.secondaryOperationalData = new dis.BeamData();
 
    /** variable length list of fundamental parameters. ^^^This is wrong */
     this.fundamentalIffParameters = new Array();
- 
+
   dis.IffAtcNavAidsLayer2Pdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -7447,7 +7463,7 @@ dis.IntercomCommunicationsParameters = function()
 
    /** variable length list of data parameters  */
     this.parameterValues = new Array();
- 
+
   dis.IntercomCommunicationsParameters.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -7529,7 +7545,7 @@ dis.IntercomControlPdu = function()
    this.communicationsChannelType = 0;
 
    /** Source entity ID */
-   this.sourceEntityID = new dis.EntityID(); 
+   this.sourceEntityID = new dis.EntityID();
 
    /** The specific intercom device being simulated within an entity. */
    this.sourceCommunicationsDeviceID = 0;
@@ -7547,7 +7563,7 @@ dis.IntercomControlPdu = function()
    this.command = 0;
 
    /** eid of the entity that has created this intercom channel. */
-   this.masterEntityID = new dis.EntityID(); 
+   this.masterEntityID = new dis.EntityID();
 
    /** specific intercom device that has created this intercom channel */
    this.masterCommunicationsDeviceID = 0;
@@ -7557,7 +7573,7 @@ dis.IntercomControlPdu = function()
 
    /** Must be  */
     this.intercomParameters = new Array();
- 
+
   dis.IntercomControlPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -7665,7 +7681,7 @@ dis.IntercomSignalPdu = function()
    this.padding = 0;
 
    /** ID of the entitythat is the source of the communication */
-   this.entityId = new dis.EntityID(); 
+   this.entityId = new dis.EntityID();
 
    /** particular radio within an entity */
    this.communicationsDeviceID = 0;
@@ -7687,7 +7703,7 @@ dis.IntercomSignalPdu = function()
 
    /** data bytes */
     this.data = new Array();
- 
+
   dis.IntercomSignalPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -7787,7 +7803,7 @@ dis.IsGroupOfPdu = function()
    this.padding = 0;
 
    /** ID of aggregated entities */
-   this.groupEntityID = new dis.EntityID(); 
+   this.groupEntityID = new dis.EntityID();
 
    /** type of entities constituting the group */
    this.groupedEntityCategory = 0;
@@ -7806,7 +7822,7 @@ dis.IsGroupOfPdu = function()
 
    /** GED records about each individual entity in the group. ^^^this is wrong--need a database lookup to find the actual size of the list elements */
     this.groupedEntityDescriptions = new Array();
- 
+
   dis.IsGroupOfPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -7904,22 +7920,22 @@ dis.IsPartOfPdu = function()
    this.padding = 0;
 
    /** ID of entity originating PDU */
-   this.orginatingEntityID = new dis.EntityID(); 
+   this.orginatingEntityID = new dis.EntityID();
 
    /** ID of entity receiving PDU */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** relationship of joined parts */
-   this.relationship = new dis.Relationship(); 
+   this.relationship = new dis.Relationship();
 
    /** location of part; centroid of part in host's coordinate system. x=range, y=bearing, z=0 */
-   this.partLocation = new dis.Vector3Float(); 
+   this.partLocation = new dis.Vector3Float();
 
    /** named location */
-   this.namedLocationID = new dis.NamedLocation(); 
+   this.namedLocationID = new dis.NamedLocation();
 
    /** entity type */
-   this.partEntityType = new dis.EntityType(); 
+   this.partEntityType = new dis.EntityType();
 
   dis.IsPartOfPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -8058,10 +8074,10 @@ dis.LinearObjectStatePdu = function()
    this.padding = 0;
 
    /** Object in synthetic environment */
-   this.objectID = new dis.EntityID(); 
+   this.objectID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.referencedObjectID = new dis.EntityID(); 
+   this.referencedObjectID = new dis.EntityID();
 
    /** unique update number of each state transition of an object */
    this.updateNumber = 0;
@@ -8073,17 +8089,17 @@ dis.LinearObjectStatePdu = function()
    this.numberOfSegments = 0;
 
    /** requesterID */
-   this.requesterID = new dis.SimulationAddress(); 
+   this.requesterID = new dis.SimulationAddress();
 
    /** receiver ID */
-   this.receivingID = new dis.SimulationAddress(); 
+   this.receivingID = new dis.SimulationAddress();
 
    /** Object type */
-   this.objectType = new dis.ObjectType(); 
+   this.objectType = new dis.ObjectType();
 
    /** Linear segment parameters */
     this.linearSegmentParameters = new Array();
- 
+
   dis.LinearObjectStatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -8167,13 +8183,13 @@ dis.LinearSegmentParameter = function()
    this.segmentNumber = 0;
 
    /** segment appearance */
-   this.segmentAppearance = new dis.SixByteChunk(); 
+   this.segmentAppearance = new dis.SixByteChunk();
 
    /** location */
-   this.location = new dis.Vector3Double(); 
+   this.location = new dis.Vector3Double();
 
    /** orientation */
-   this.orientation = new dis.Orientation(); 
+   this.orientation = new dis.Orientation();
 
    /** segmentLength */
    this.segmentLength = 0;
@@ -8345,9 +8361,9 @@ dis.Marking = function()
           outputStream.writeByte(this.characters[ idx ] );
        }
   };
-  
+
   /*
-   * Returns the byte array marking, in string format. 
+   * Returns the byte array marking, in string format.
    * @return string format marking characters
    */
   dis.Marking.prototype.getMarking = function()
@@ -8357,15 +8373,15 @@ dis.Marking = function()
       {
           marking = marking + String.fromCharCode(this.characters[idx]);
       }
-      
+
       return marking;
   };
-  
+
   /**
    * Given a string format marking, sets the bytes of the marking object
    * to the appropriate character values. Clamps the string to no more
    * than 11 characters.
-   * 
+   *
    * @param {String} newMarking string format marking
    * @returns {nothing}
    */
@@ -8374,22 +8390,22 @@ dis.Marking = function()
       var stringLen = newMarking.length;
       if(stringLen > 11)
           stringLen = 11;
-      
+
       // Copy over up to 11 characters from the string to the array
       var charsCopied = 0;
       while(charsCopied < stringLen)
-      {          
+      {
           this.characters[charsCopied] = newMarking.charCodeAt( charsCopied );
           charsCopied++;
       }
-      
+
       // Zero-fill the remainer of the character array
       while(charsCopied < 11)
       {
           this.characters[ charsCopied ] = 0;
           charsCopied++;
       }
-      
+
   };
 }; // end of class
 
@@ -8441,10 +8457,10 @@ dis.MinefieldDataPdu = function()
    this.padding = 0;
 
    /** Minefield ID */
-   this.minefieldID = new dis.EntityID(); 
+   this.minefieldID = new dis.EntityID();
 
    /** ID of entity making request */
-   this.requestingEntityID = new dis.EntityID(); 
+   this.requestingEntityID = new dis.EntityID();
 
    /** Minefield sequence number */
    this.minefieldSequenceNumbeer = 0;
@@ -8471,17 +8487,17 @@ dis.MinefieldDataPdu = function()
    this.dataFilter = 0;
 
    /** Mine type */
-   this.mineType = new dis.EntityType(); 
+   this.mineType = new dis.EntityType();
 
    /** Sensor types, each 16 bits long */
     this.sensorTypes = new Array();
- 
+
    /** Padding to get things 32-bit aligned. ^^^this is wrong--dyanmically sized padding needed */
    this.pad3 = 0;
 
    /** Mine locations */
     this.mineLocation = new Array();
- 
+
   dis.MinefieldDataPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -8675,10 +8691,10 @@ dis.MinefieldQueryPdu = function()
    this.padding = 0;
 
    /** Minefield ID */
-   this.minefieldID = new dis.EntityID(); 
+   this.minefieldID = new dis.EntityID();
 
    /** EID of entity making the request */
-   this.requestingEntityID = new dis.EntityID(); 
+   this.requestingEntityID = new dis.EntityID();
 
    /** request ID */
    this.requestID = 0;
@@ -8696,14 +8712,14 @@ dis.MinefieldQueryPdu = function()
    this.dataFilter = 0;
 
    /** Entity type of mine being requested */
-   this.requestedMineType = new dis.EntityType(); 
+   this.requestedMineType = new dis.EntityType();
 
    /** perimeter points of request */
     this.requestedPerimeterPoints = new Array();
- 
+
    /** Sensor types, each 16 bits long */
     this.sensorTypes = new Array();
- 
+
   dis.MinefieldQueryPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -8817,10 +8833,10 @@ dis.MinefieldResponseNackPdu = function()
    this.padding = 0;
 
    /** Minefield ID */
-   this.minefieldID = new dis.EntityID(); 
+   this.minefieldID = new dis.EntityID();
 
    /** entity ID making the request */
-   this.requestingEntityID = new dis.EntityID(); 
+   this.requestingEntityID = new dis.EntityID();
 
    /** request ID */
    this.requestID = 0;
@@ -8830,7 +8846,7 @@ dis.MinefieldResponseNackPdu = function()
 
    /** PDU sequence numbers that were missing */
     this.missingPduSequenceNumbers = new Array();
- 
+
   dis.MinefieldResponseNackPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -8924,7 +8940,7 @@ dis.MinefieldStatePdu = function()
    this.padding = 0;
 
    /** Minefield ID */
-   this.minefieldID = new dis.EntityID(); 
+   this.minefieldID = new dis.EntityID();
 
    /** Minefield sequence */
    this.minefieldSequence = 0;
@@ -8936,16 +8952,16 @@ dis.MinefieldStatePdu = function()
    this.numberOfPerimeterPoints = 0;
 
    /** type of minefield */
-   this.minefieldType = new dis.EntityType(); 
+   this.minefieldType = new dis.EntityType();
 
    /** how many mine types */
    this.numberOfMineTypes = 0;
 
    /** location of minefield in world coords */
-   this.minefieldLocation = new dis.Vector3Double(); 
+   this.minefieldLocation = new dis.Vector3Double();
 
    /** orientation of minefield */
-   this.minefieldOrientation = new dis.Orientation(); 
+   this.minefieldOrientation = new dis.Orientation();
 
    /** appearance bitflags */
    this.appearance = 0;
@@ -8955,10 +8971,10 @@ dis.MinefieldStatePdu = function()
 
    /** perimeter points for the minefield */
     this.perimeterPoints = new Array();
- 
+
    /** Type of mines */
     this.mineType = new Array();
- 
+
   dis.MinefieldStatePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -9091,7 +9107,7 @@ exports.ModulationType = dis.ModulationType;
 // End of ModulationType class
 
 /**
- * discrete ostional relationsihip 
+ * discrete ostional relationsihip
  *
  * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
@@ -9394,7 +9410,7 @@ dis.PduContainer = function()
 
    /** record sets */
     this.pdus = new Array();
- 
+
   dis.PduContainer.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -9584,10 +9600,10 @@ dis.PointObjectStatePdu = function()
    this.padding = 0;
 
    /** Object in synthetic environment */
-   this.objectID = new dis.EntityID(); 
+   this.objectID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.referencedObjectID = new dis.EntityID(); 
+   this.referencedObjectID = new dis.EntityID();
 
    /** unique update number of each state transition of an object */
    this.updateNumber = 0;
@@ -9599,22 +9615,22 @@ dis.PointObjectStatePdu = function()
    this.modifications = 0;
 
    /** Object type */
-   this.objectType = new dis.ObjectType(); 
+   this.objectType = new dis.ObjectType();
 
    /** Object location */
-   this.objectLocation = new dis.Vector3Double(); 
+   this.objectLocation = new dis.Vector3Double();
 
    /** Object orientation */
-   this.objectOrientation = new dis.Orientation(); 
+   this.objectOrientation = new dis.Orientation();
 
    /** Object apperance */
    this.objectAppearance = 0;
 
    /** requesterID */
-   this.requesterID = new dis.SimulationAddress(); 
+   this.requesterID = new dis.SimulationAddress();
 
    /** receiver ID */
-   this.receivingID = new dis.SimulationAddress(); 
+   this.receivingID = new dis.SimulationAddress();
 
    /** padding */
    this.pad2 = 0;
@@ -9901,7 +9917,7 @@ dis.ReceiverPdu = function()
    this.padding = 0;
 
    /** ID of the entity that is the source of the communication, ie contains the radio */
-   this.entityId = new dis.EntityID(); 
+   this.entityId = new dis.EntityID();
 
    /** particular radio within an entity */
    this.radioId = 0;
@@ -9916,7 +9932,7 @@ dis.ReceiverPdu = function()
    this.receivedPower = 0;
 
    /** ID of transmitter */
-   this.transmitterEntityId = new dis.EntityID(); 
+   this.transmitterEntityId = new dis.EntityID();
 
    /** ID of transmitting radio */
    this.transmitterRadioId = 0;
@@ -10008,10 +10024,10 @@ dis.RecordQueryReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** request ID */
    this.requestID = 0;
@@ -10036,7 +10052,7 @@ dis.RecordQueryReliablePdu = function()
 
    /** record IDs */
     this.recordIDs = new Array();
- 
+
   dis.RecordQueryReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -10254,10 +10270,10 @@ dis.RemoveEntityPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Identifier for the request */
    this.requestID = 0;
@@ -10341,10 +10357,10 @@ dis.RemoveEntityReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** level of reliability service used for this transaction */
    this.requiredReliabilityService = 0;
@@ -10443,10 +10459,10 @@ dis.RepairCompletePdu = function()
    this.padding = 0;
 
    /** Entity that is receiving service */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Entity that is supplying */
-   this.repairingEntityID = new dis.EntityID(); 
+   this.repairingEntityID = new dis.EntityID();
 
    /** Enumeration for type of repair */
    this.repair = 0;
@@ -10535,10 +10551,10 @@ dis.RepairResponsePdu = function()
    this.padding = 0;
 
    /** Entity that is receiving service */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Entity that is supplying */
-   this.repairingEntityID = new dis.EntityID(); 
+   this.repairingEntityID = new dis.EntityID();
 
    /** Result of repair operation */
    this.repairResult = 0;
@@ -10632,10 +10648,10 @@ dis.ResupplyCancelPdu = function()
    this.padding = 0;
 
    /** Entity that is receiving service */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Entity that is supplying */
-   this.supplyingEntityID = new dis.EntityID(); 
+   this.supplyingEntityID = new dis.EntityID();
 
   dis.ResupplyCancelPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -10714,10 +10730,10 @@ dis.ResupplyOfferPdu = function()
    this.padding = 0;
 
    /** Entity that is receiving service */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Entity that is supplying */
-   this.supplyingEntityID = new dis.EntityID(); 
+   this.supplyingEntityID = new dis.EntityID();
 
    /** how many supplies are being offered */
    this.numberOfSupplyTypes = 0;
@@ -10729,7 +10745,7 @@ dis.ResupplyOfferPdu = function()
    this.padding2 = 0;
 
     this.supplies = new Array();
- 
+
   dis.ResupplyOfferPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -10825,10 +10841,10 @@ dis.ResupplyReceivedPdu = function()
    this.padding = 0;
 
    /** Entity that is receiving service */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** Entity that is supplying */
-   this.supplyingEntityID = new dis.EntityID(); 
+   this.supplyingEntityID = new dis.EntityID();
 
    /** how many supplies are being offered */
    this.numberOfSupplyTypes = 0;
@@ -10840,7 +10856,7 @@ dis.ResupplyReceivedPdu = function()
    this.padding2 = 0;
 
     this.supplies = new Array();
- 
+
   dis.ResupplyReceivedPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -10936,7 +10952,7 @@ dis.SeesPdu = function()
    this.padding = 0;
 
    /** Originating entity ID */
-   this.orginatingEntityID = new dis.EntityID(); 
+   this.orginatingEntityID = new dis.EntityID();
 
    /** IR Signature representation index */
    this.infraredSignatureRepresentationIndex = 0;
@@ -10955,10 +10971,10 @@ dis.SeesPdu = function()
 
    /** variable length list of propulsion system data */
     this.propulsionSystemData = new Array();
- 
+
    /** variable length list of vectoring system data */
     this.vectoringSystemData = new Array();
- 
+
   dis.SeesPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -11068,10 +11084,10 @@ dis.ServiceRequestPdu = function()
    this.padding = 0;
 
    /** Entity that is requesting service */
-   this.requestingEntityID = new dis.EntityID(); 
+   this.requestingEntityID = new dis.EntityID();
 
    /** Entity that is providing the service */
-   this.servicingEntityID = new dis.EntityID(); 
+   this.servicingEntityID = new dis.EntityID();
 
    /** type of service requested */
    this.serviceTypeRequested = 0;
@@ -11083,7 +11099,7 @@ dis.ServiceRequestPdu = function()
    this.serviceRequestPadding = 0;
 
     this.supplies = new Array();
- 
+
   dis.ServiceRequestPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -11179,10 +11195,10 @@ dis.SetDataPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** ID of request */
    this.requestID = 0;
@@ -11198,10 +11214,10 @@ dis.SetDataPdu = function()
 
    /** variable length list of fixed datums */
     this.fixedDatums = new Array();
- 
+
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
- 
+
   dis.SetDataPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -11311,10 +11327,10 @@ dis.SetDataReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** level of reliability service used for this transaction */
    this.requiredReliabilityService = 0;
@@ -11336,10 +11352,10 @@ dis.SetDataReliablePdu = function()
 
    /** Fixed datum records */
     this.fixedDatumRecords = new Array();
- 
+
    /** Variable datum records */
     this.variableDatumRecords = new Array();
- 
+
   dis.SetDataReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -11453,10 +11469,10 @@ dis.SetRecordReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** request ID */
    this.requestID = 0;
@@ -11475,7 +11491,7 @@ dis.SetRecordReliablePdu = function()
 
    /** record sets */
     this.recordSets = new Array();
- 
+
   dis.SetRecordReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -11627,7 +11643,7 @@ dis.SignalPdu = function()
    this.padding = 0;
 
    /** ID of the entity that is the source of the communication, ie contains the radio */
-   this.entityId = new dis.EntityID(); 
+   this.entityId = new dis.EntityID();
 
    /** particular radio within an entity */
    this.radioId = 0;
@@ -11649,7 +11665,7 @@ dis.SignalPdu = function()
 
    /** list of eight bit values. Must be padded to fall on a 32 bit boundary. */
     this.data = new Array();
- 
+
   dis.SignalPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -11796,10 +11812,10 @@ dis.SimulationManagementFamilyPdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
   dis.SimulationManagementFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -11878,10 +11894,10 @@ dis.SimulationManagementWithReliabilityFamilyPdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
   dis.SimulationManagementWithReliabilityFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -12049,16 +12065,16 @@ dis.StartResumePdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** UTC time at which the simulation shall start or resume */
-   this.realWorldTime = new dis.ClockTime(); 
+   this.realWorldTime = new dis.ClockTime();
 
    /** Simulation clock time at which the simulation shall start or resume */
-   this.simulationTime = new dis.ClockTime(); 
+   this.simulationTime = new dis.ClockTime();
 
    /** Identifier for the request */
    this.requestID = 0;
@@ -12146,16 +12162,16 @@ dis.StartResumeReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** time in real world for this operation to happen */
-   this.realWorldTime = new dis.ClockTime(); 
+   this.realWorldTime = new dis.ClockTime();
 
    /** time in simulation for the simulation to resume */
-   this.simulationTime = new dis.ClockTime(); 
+   this.simulationTime = new dis.ClockTime();
 
    /** level of reliability service used for this transaction */
    this.requiredReliabilityService = 0;
@@ -12258,13 +12274,13 @@ dis.StopFreezePdu = function()
    this.padding = 0;
 
    /** Entity that is sending message */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Entity that is intended to receive message */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** UTC time at which the simulation shall stop or freeze */
-   this.realWorldTime = new dis.ClockTime(); 
+   this.realWorldTime = new dis.ClockTime();
 
    /** Reason the simulation was stopped or frozen */
    this.reason = 0;
@@ -12365,13 +12381,13 @@ dis.StopFreezeReliablePdu = function()
    this.padding = 0;
 
    /** Object originatig the request */
-   this.originatingEntityID = new dis.EntityID(); 
+   this.originatingEntityID = new dis.EntityID();
 
    /** Object with which this point object is associated */
-   this.receivingEntityID = new dis.EntityID(); 
+   this.receivingEntityID = new dis.EntityID();
 
    /** time in real world for this operation to happen */
-   this.realWorldTime = new dis.ClockTime(); 
+   this.realWorldTime = new dis.ClockTime();
 
    /** Reason for stopping/freezing simulation */
    this.reason = 0;
@@ -12456,7 +12472,7 @@ if (typeof exports === "undefined")
 dis.SupplyQuantity = function()
 {
    /** Type of supply */
-   this.supplyType = new dis.EntityType(); 
+   this.supplyType = new dis.EntityType();
 
    /** quantity to be supplied */
    this.quantity = 0;
@@ -12632,7 +12648,7 @@ if (typeof exports === "undefined")
 dis.TrackJamTarget = function()
 {
    /** track/jam target */
-   this.trackJam = new dis.EntityID(); 
+   this.trackJam = new dis.EntityID();
 
    /** Emitter ID */
    this.emitterID = 0;
@@ -12705,10 +12721,10 @@ dis.TransferControlRequestPdu = function()
    this.padding = 0;
 
    /** ID of entity originating request */
-   this.orginatingEntityID = new dis.EntityID(); 
+   this.orginatingEntityID = new dis.EntityID();
 
    /** ID of entity receiving request */
-   this.recevingEntityID = new dis.EntityID(); 
+   this.recevingEntityID = new dis.EntityID();
 
    /** ID ofrequest */
    this.requestID = 0;
@@ -12720,14 +12736,14 @@ dis.TransferControlRequestPdu = function()
    this.tranferType = 0;
 
    /** The entity for which control is being requested to transfer */
-   this.transferEntityID = new dis.EntityID(); 
+   this.transferEntityID = new dis.EntityID();
 
    /** number of record sets to transfer */
    this.numberOfRecordSets = 0;
 
    /** ^^^This is wrong--the RecordSet class needs more work */
     this.recordSets = new Array();
- 
+
   dis.TransferControlRequestPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -12827,13 +12843,13 @@ dis.TransmitterPdu = function()
    this.padding = 0;
 
    /** ID of the entity that is the source of the communication, ie contains the radio */
-   this.entityId = new dis.EntityID(); 
+   this.entityId = new dis.EntityID();
 
    /** particular radio within an entity */
    this.radioId = 0;
 
    /** linear accelleration of entity */
-   this.radioEntityType = new dis.RadioEntityType(); 
+   this.radioEntityType = new dis.RadioEntityType();
 
    /** transmit state */
    this.transmitState = 0;
@@ -12845,10 +12861,10 @@ dis.TransmitterPdu = function()
    this.padding1 = 0;
 
    /** Location of antenna */
-   this.antennaLocation = new dis.Vector3Double(); 
+   this.antennaLocation = new dis.Vector3Double();
 
    /** relative location of antenna, in entity coordinates */
-   this.relativeAntennaLocation = new dis.Vector3Float(); 
+   this.relativeAntennaLocation = new dis.Vector3Float();
 
    /** antenna pattern type */
    this.antennaPatternType = 0;
@@ -12866,7 +12882,7 @@ dis.TransmitterPdu = function()
    this.power = 0;
 
    /** modulation */
-   this.modulationType = new dis.ModulationType(); 
+   this.modulationType = new dis.ModulationType();
 
    /** crypto system enumeration */
    this.cryptoSystem = 0;
@@ -12885,10 +12901,10 @@ dis.TransmitterPdu = function()
 
    /** variable length list of modulation parameters */
     this.modulationParametersList = new Array();
- 
+
    /** variable length list of antenna pattern records */
     this.antennaPatternList = new Array();
- 
+
   dis.TransmitterPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -13072,10 +13088,10 @@ dis.UaPdu = function()
    this.padding = 0;
 
    /** ID of the entity that is the source of the emission */
-   this.emittingEntityID = new dis.EntityID(); 
+   this.emittingEntityID = new dis.EntityID();
 
    /** ID of event */
-   this.eventID = new dis.EventID(); 
+   this.eventID = new dis.EventID();
 
    /** This field shall be used to indicate whether the data in the UA PDU represent a state update or data that have changed since issuance of the last UA PDU */
    this.stateChangeIndicator = 0;
@@ -13100,12 +13116,12 @@ dis.UaPdu = function()
 
    /** shaft RPM values */
     this.shaftRPMs = new Array();
- 
+
    /** apaData */
     this.apaData = new Array();
- 
+
     this.emitterSystems = new Array();
- 
+
   dis.UaPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
 
@@ -13442,10 +13458,10 @@ dis.WarfareFamilyPdu = function()
    this.padding = 0;
 
    /** ID of the entity that shot */
-   this.firingEntityID = new dis.EntityID(); 
+   this.firingEntityID = new dis.EntityID();
 
    /** ID of the entity that is being shot at */
-   this.targetEntityID = new dis.EntityID(); 
+   this.targetEntityID = new dis.EntityID();
 
   dis.WarfareFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
   {
@@ -13480,4 +13496,3 @@ dis.WarfareFamilyPdu = function()
 exports.WarfareFamilyPdu = dis.WarfareFamilyPdu;
 
 // End of WarfareFamilyPdu class
-
