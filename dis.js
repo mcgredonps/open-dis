@@ -3774,17 +3774,6 @@ exports.DataPdu = dis.DataPdu;
 
 // End of DataPdu class
 
-
-// node.js module support
-
-dis.DataPdu = function(){
-
-}; // end of class
-
-exports.TransmitterPdu = dis.TransmitterPdu;
-
-// End of TransmitterPdu class
-
 /**
  * Section 5.3.6.8. Request for data from an entity. COMPLETE
  *
