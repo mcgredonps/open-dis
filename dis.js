@@ -1,3 +1,5 @@
+var Int64 = require('node-int64');
+
 if (typeof dis === "undefined")
    dis = {};
 
@@ -319,10 +321,10 @@ dis.InputStream = function(binaryData)
 
     dis.InputStream.prototype.readLong = function()
     {
-        console.log("Problem in dis.InputStream. Javascript cannot natively handle 64 bit ints");
-        console.log("Returning 0 from read, which is almost certainly wrong");
+        var ab = this.dataView.buffer.slice(this.currentPosition, this.currentPosition + 8);
+        var data = new Int64(new Buffer(ab)).toString();
         this.currentPosition = this.currentPosition + 8;
-        return 0;
+        return data;
     };
 };
 
