@@ -1,4 +1,4 @@
-var Int64 = require('node-int64');
+var Long = require('long');
 
 if (typeof dis === "undefined")
    dis = {};
@@ -321,10 +321,10 @@ dis.InputStream = function(binaryData)
 
     dis.InputStream.prototype.readLong = function()
     {
-        var ab = this.dataView.buffer.slice(this.currentPosition, this.currentPosition + 8);
-        var data = new Int64(new Buffer(ab)).toString();
-        this.currentPosition = this.currentPosition + 8;
-        return data;
+        var high = this.dataView.getInt32(this.currentPosition);
+        var low = this.dataView.getInt32(this.currentPosition + 4);
+        var long = new Long(low, high);
+        return long.toString();
     };
 };
 
@@ -395,10 +395,9 @@ dis.OutputStream = function(binaryDataBuffer)
 
     dis.OutputStream.prototype.writeLong = function(userData)
     {
-        console.log("Problem in dis.outputStream. Javascript cannot natively handle 64 bit ints");
-        console.log("writing 0, which is almost certainly wrong");
-        this.dataView.setInt32(this.currentPosition, 0);
-        this.dataView.setInt32(this.currentPosition + 4, 0);
+        var long = new Long.fromString(userData);
+        this.dataView.setInt32(this.currentPosition, long.getHighBits());
+        this.dataView.setInt32(this.currentPosition + 4, long.getLowBits());
         this.currentPosition = this.currentPosition + 8;
     };
 };
