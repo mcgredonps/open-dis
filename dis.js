@@ -488,6 +488,11 @@ if (typeof exports === "undefined")
                 newPdu.initFromBinaryDIS(inputStream);
                 break;
 
+            case 26:    // Signal
+                newPdu = new dis.SignalPdu();
+                newPdu.initFromBinaryDIS(inputStream);
+                break;
+
             default:
                throw  "PduType: " + pduType + " Unrecognized PDUType. Add PDU in dis.PduFactory.";
         }
