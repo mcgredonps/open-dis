@@ -11613,12 +11613,14 @@ dis.SignalPdu = function()
        this.dataLength = inputStream.readUShort();
        this.samples = inputStream.readUShort();
        try{
-           for(var idx = 0; idx < this.samples; idx++)
+
+           for(var idx = 0; idx < (this.dataLength / 8); idx++)
            {
                 var anx = new dis.Chunk(1);
                 anx.initFromBinaryDIS(inputStream);
                 this.data.push(anx);
            }
+
        }catch(e){
            console.log('error: ' + e.message);
        }
