@@ -2575,7 +2575,7 @@ dis.ArealObjectStatePdu = function()
    this.objectType = new dis.EntityType();
 
    /** Object appearance */
-   this.objectAppearance = new dis.SixByteChunk();
+   this.objectAppearance = new dis.Chunk(6);
 
    /** Number of points */
    this.numberOfPoints = 0;
@@ -4627,36 +4627,6 @@ if (typeof dis === "undefined")
 if (typeof exports === "undefined")
  exports = {};
 
-
-dis.EightByteChunk = function()
-{
-   /** Eight bytes of arbitrary data */
-   this.otherParameters = new Array(0, 0, 0, 0, 0, 0, 0, 0);
-
-  dis.EightByteChunk.prototype.initFromBinaryDIS = function(inputStream)
-  {
-
-       for(var idx = 0; idx < 8; idx++)
-       {
-          this.otherParameters[ idx ] = inputStream.readByte();
-       }
-  };
-
-  dis.EightByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
-  {
-
-       for(var idx = 0; idx < 8; idx++)
-       {
-          outputStream.writeByte(this.otherParameters[ idx ] );
-       }
-  };
-}; // end of class
-
- // node.js module support
-exports.EightByteChunk = dis.EightByteChunk;
-
-// End of EightByteChunk class
-
 /**
  * Description of one electronic emission beam
  *
@@ -6499,36 +6469,6 @@ if (typeof dis === "undefined")
 if (typeof exports === "undefined")
  exports = {};
 
-
-dis.FourByteChunk = function()
-{
-   /** four bytes of arbitrary data */
-   this.otherParameters = new Array(0, 0, 0, 0);
-
-  dis.FourByteChunk.prototype.initFromBinaryDIS = function(inputStream)
-  {
-
-       for(var idx = 0; idx < 4; idx++)
-       {
-          this.otherParameters[ idx ] = inputStream.readByte();
-       }
-  };
-
-  dis.FourByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
-  {
-
-       for(var idx = 0; idx < 4; idx++)
-       {
-          outputStream.writeByte(this.otherParameters[ idx ] );
-       }
-  };
-}; // end of class
-
- // node.js module support
-exports.FourByteChunk = dis.FourByteChunk;
-
-// End of FourByteChunk class
-
 /**
  * Section 5.2.22. Contains electromagnetic emmision regineratin parameters that are        variable throughout a scenario dependent on the actions of the participants in the simulation. Also provides basic parametric data that may be used to support low-fidelity simulations.
  *
@@ -6856,7 +6796,7 @@ dis.GridAxisRecordRepresentation1 = function()
        this.numberOfValues = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfValues; idx++)
        {
-           var anX = new dis.TwoByteChunk();
+           var anX = new dis.Chunk(2);
            anX.initFromBinaryDIS(inputStream);
            this.dataValues.push(anX);
        }
@@ -6925,7 +6865,7 @@ dis.GridAxisRecordRepresentation2 = function()
        this.numberOfValues = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfValues; idx++)
        {
-           var anX = new dis.FourByteChunk();
+           var anX = new dis.Chunk(4);
            anX.initFromBinaryDIS(inputStream);
            this.dataValues.push(anX);
        }
@@ -8178,7 +8118,7 @@ dis.LinearSegmentParameter = function()
    this.segmentNumber = 0;
 
    /** segment appearance */
-   this.segmentAppearance = new dis.SixByteChunk();
+   this.segmentAppearance = new dis.Chunk(6);
 
    /** location */
    this.location = new dis.Vector3Double();
@@ -8516,7 +8456,7 @@ dis.MinefieldDataPdu = function()
        this.mineType.initFromBinaryDIS(inputStream);
        for(var idx = 0; idx < this.numberOfSensorTypes; idx++)
        {
-           var anX = new dis.TwoByteChunk();
+           var anX = new dis.Chunk(2);
            anX.initFromBinaryDIS(inputStream);
            this.sensorTypes.push(anX);
        }
@@ -8742,7 +8682,7 @@ dis.MinefieldQueryPdu = function()
 
        for(var idx = 0; idx < this.numberOfSensorTypes; idx++)
        {
-           var anX = new dis.TwoByteChunk();
+           var anX = new dis.Chunk(2);
            anX.initFromBinaryDIS(inputStream);
            this.sensorTypes.push(anX);
        }
@@ -8858,7 +8798,7 @@ dis.MinefieldResponseNackPdu = function()
        this.numberOfMissingPdus = inputStream.readUByte();
        for(var idx = 0; idx < this.numberOfMissingPdus; idx++)
        {
-           var anX = new dis.EightByteChunk();
+           var anX = new dis.Chunk(8);
            anX.initFromBinaryDIS(inputStream);
            this.missingPduSequenceNumbers.push(anX);
        }
@@ -9228,35 +9168,29 @@ if (typeof dis === "undefined")
 if (typeof exports === "undefined")
  exports = {};
 
+// Replaces (n)ByteChunk functions
+// chunkSize: specify the size of the chunk, ie 1 = 1 byte chunk, 8 = 8 byte chunk, etc.
+// usage: var foo = new Chunk(4) // for a 4 byte chunk
+dis.Chunk = class{
 
-dis.OneByteChunk = function()
-{
-   /** one byte of arbitrary data */
-   this.otherParameters = new Array(0);
-
-  dis.OneByteChunk.prototype.initFromBinaryDIS = function(inputStream)
-  {
-
-       for(var idx = 0; idx < 1; idx++)
-       {
-          this.otherParameters[ idx ] = inputStream.readByte();
+    constructor(chunkSize){
+        this.otherParameters = new Array(chunkSize).fill(0);
+        this.chunkSize = chunkSize;
        }
-  };
 
-  dis.OneByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
-  {
-
-       for(var idx = 0; idx < 1; idx++)
-       {
-          outputStream.writeByte(this.otherParameters[ idx ] );
+    initFromBinaryDIS(inputStream){
+        for(var i = 0; i < this.chunkSize; i++){
+            this.otherParameters[i] = inputStream.readByte();
+        }
        }
-  };
-}; // end of class
 
- // node.js module support
-exports.OneByteChunk = dis.OneByteChunk;
-
-// End of OneByteChunk class
+    encodeToBinaryDIS(outputStream){
+        for(var i = 0; i < this.chunkSize; i++){
+            outputStream.writeByte(this.otherParameters[i]);
+        }
+    }
+}
+// End of Chunk class
 
 /**
  * Section 5.2.17. Three floating point values representing an orientation, psi, theta, and phi, aka the euler angles, in radians
@@ -10069,7 +10003,7 @@ dis.RecordQueryReliablePdu = function()
        this.numberOfRecords = inputStream.readInt();
        for(var idx = 0; idx < this.numberOfRecords; idx++)
        {
-           var anX = new dis.FourByteChunk();
+           var anX = new dis.Chunk(4);
            anX.initFromBinaryDIS(inputStream);
            this.recordIDs.push(anX);
        }
@@ -11681,9 +11615,9 @@ dis.SignalPdu = function()
        try{
            for(var idx = 0; idx < this.samples; idx++)
            {
-               var anX = new dis.OneByteChunk();
-               anX.initFromBinaryDIS(inputStream);
-               this.data.push(anX);
+                var anx = new dis.Chunk(1);
+                anx.initFromBinaryDIS(inputStream);
+                this.data.push(anx);
            }
        }catch(e){
            console.log('error: ' + e.message);
@@ -11949,36 +11883,6 @@ if (typeof dis === "undefined")
 // See http://howtonode.org/creating-custom-modules
 if (typeof exports === "undefined")
  exports = {};
-
-
-dis.SixByteChunk = function()
-{
-   /** six bytes of arbitrary data */
-   this.otherParameters = new Array(0, 0, 0, 0, 0, 0);
-
-  dis.SixByteChunk.prototype.initFromBinaryDIS = function(inputStream)
-  {
-
-       for(var idx = 0; idx < 6; idx++)
-       {
-          this.otherParameters[ idx ] = inputStream.readByte();
-       }
-  };
-
-  dis.SixByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
-  {
-
-       for(var idx = 0; idx < 6; idx++)
-       {
-          outputStream.writeByte(this.otherParameters[ idx ] );
-       }
-  };
-}; // end of class
-
- // node.js module support
-exports.SixByteChunk = dis.SixByteChunk;
-
-// End of SixByteChunk class
 
 /**
  * Section 5.2.4.3. Used when the antenna pattern type in the transmitter pdu is of value 2.         Specified the direction and radiation pattern from a radio transmitter's antenna.        NOTE: this class must be hand-coded to clean up some implementation details.
@@ -13013,36 +12917,6 @@ if (typeof dis === "undefined")
 // See http://howtonode.org/creating-custom-modules
 if (typeof exports === "undefined")
  exports = {};
-
-
-dis.TwoByteChunk = function()
-{
-   /** two bytes of arbitrary data */
-   this.otherParameters = new Array(0, 0);
-
-  dis.TwoByteChunk.prototype.initFromBinaryDIS = function(inputStream)
-  {
-
-       for(var idx = 0; idx < 2; idx++)
-       {
-          this.otherParameters[ idx ] = inputStream.readByte();
-       }
-  };
-
-  dis.TwoByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
-  {
-
-       for(var idx = 0; idx < 2; idx++)
-       {
-          outputStream.writeByte(this.otherParameters[ idx ] );
-       }
-  };
-}; // end of class
-
- // node.js module support
-exports.TwoByteChunk = dis.TwoByteChunk;
-
-// End of TwoByteChunk class
 
 /**
  * Section 5.3.7.3. Information about underwater acoustic emmissions. This requires manual cleanup.  The beam data records should ALL be a the finish, rather than attached to each emitter system. UNFINISHED
