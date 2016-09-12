@@ -9174,19 +9174,19 @@ if (typeof exports === "undefined")
 dis.Chunk = class{
 
     constructor(chunkSize){
-        this.otherParameters = new Array(chunkSize).fill(0);
+        this.data = new Array(chunkSize).fill(0);
         this.chunkSize = chunkSize;
        }
 
     initFromBinaryDIS(inputStream){
         for(var i = 0; i < this.chunkSize; i++){
-            this.otherParameters[i] = inputStream.readByte();
+            this.data[i] = inputStream.readByte();
         }
        }
 
     encodeToBinaryDIS(outputStream){
         for(var i = 0; i < this.chunkSize; i++){
-            outputStream.writeByte(this.otherParameters[i]);
+            outputStream.writeByte(this.data[i]);
         }
     }
 }
