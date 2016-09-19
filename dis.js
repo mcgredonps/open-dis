@@ -6721,7 +6721,7 @@ dis.GridAxisRecordRepresentation0 = function()
        this.numberOfBytes = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfBytes; idx++)
        {
-           var anX = new dis.OneByteChunk();
+           var anX = new dis.Chunk(1);
            anX.initFromBinaryDIS(inputStream);
            this.dataValues.push(anX);
        }
@@ -7406,7 +7406,7 @@ dis.IntercomCommunicationsParameters = function()
        this.recordLength = inputStream.readUShort();
        for(var idx = 0; idx < this.recordLength; idx++)
        {
-           var anX = new dis.OneByteChunk();
+           var anX = new dis.Chunk(1);
            anX.initFromBinaryDIS(inputStream);
            this.parameterValues.push(anX);
        }
@@ -7658,7 +7658,7 @@ dis.IntercomSignalPdu = function()
        this.samples = inputStream.readUShort();
        for(var idx = 0; idx < this.dataLength; idx++)
        {
-           var anX = new dis.OneByteChunk();
+           var anX = new dis.Chunk(1);
            anX.initFromBinaryDIS(inputStream);
            this.data.push(anX);
        }
