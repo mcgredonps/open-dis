@@ -32,14 +32,14 @@ dis.CoordinateConversion = function()
         answer[0] = 0.0;
         answer[1] = 0.0;
         answer[2] = 0.0;
-        var a = 6378137.0;    //semi major axis (WGS 84)
-        var b = 6356752.3142; //semi minor axis (WGX 84)
 
-        var eSquared; //first eccentricity squared
-        var rSubN; //radius of the curvature of the prime vertical
-        var ePrimeSquared;//second eccentricity squared
+        var eSquared;      //first eccentricity squared
+        var rSubN;         //radius of the curvature of the prime vertical
+        var ePrimeSquared; //second eccentricity squared
         var W = Math.sqrt((x*x + y*y));
-
+        var a = 6378137.0;    // shorter variable names
+        var b = 6356752.3142;
+        
         eSquared = (a*a - b*b) / (a*a);
         ePrimeSquared = (a*a - b*b) / (b*b);
         
@@ -58,6 +58,7 @@ dis.CoordinateConversion = function()
         {
             answer[1] = Math.atan(y/x) - Math.PI;
         }
+        
         /**
          * Longitude calculation done. Now calculate latitude.
          * NOTE: The handbook mentions using the calculated phi (latitude) value to recalculate B
@@ -76,15 +77,15 @@ dis.CoordinateConversion = function()
          * h = (Z / sin phi ) - rSubN + (eSquared * rSubN). Our applications are never near the poles, so this formula
          * was left unimplemented.
          */
-        rSubN = (a*a) / Math.sqrt(((a*a) * (Math.cos(phi)*Math.cos(phi)) + ((b*b) * (Math.sin(phi)*Math.sin(phi)))));
+        rSubN = (a * a) / Math.sqrt(((a * a) * (Math.cos(phi)*Math.cos(phi)) + ((b*b) * (Math.sin(phi)*Math.sin(phi)))));
 
         answer[2] = (W / Math.cos(phi)) - rSubN;
     
-        var result = {latitude:answer[0] * this.RADIANS_TO_DEGREES, longitude:answer[1] * this.RADIANS_TO_DEGREES, altitude:answer[2] * this.RADIANS_TO_DEGREES};
+        var result = {latitude:answer[0] * this.RADIANS_TO_DEGREES, longitude:answer[1] * this.RADIANS_TO_DEGREES, altitude:answer[2]};
         return result;
 
     };
-    
+   
     /**
      * Converts lat long and geodetic height (elevation) into DIS XYZ
      * This algorithm also uses the WGS84 ellipsoid, though you can change the values
@@ -97,17 +98,15 @@ dis.CoordinateConversion = function()
         var latitudeRadians = latLonAlt.lat   * this.DEGREES_TO_RADIANS;
         var longtitudeRadians = latLonAlt.lon * this.DEGREES_TO_RADIANS;
         
-        //var a = 6378137.0; //semi major axis
-        //var b = 6356752.3142; //semi minor axis
         var cosLat = Math.cos(latitudeRadians);
         var sinLat = Math.sin(latitudeRadians);
 
 
-        var rSubN = (this.a*this.a) / Math.sqrt(((this.a*this.a) * (cosLat*cosLat) + ((this.b*this.b) * (sinLat*sinLat))));
+        var rSubN = (this.a * this.a) / Math.sqrt(((this.a * this.a) * (cosLat * cosLat) + ((this.b * this.b) * (sinLat*sinLat))));
 
         var X = (rSubN + latLonAlt.alt) * cosLat * Math.cos(longtitudeRadians);
         var Y = (rSubN + latLonAlt.alt) * cosLat * Math.sin(longtitudeRadians);
-        var Z = ((((this.b*this.b) / (this.a*this.a)) * rSubN) + latLonAlt.alt) * sinLat;
+        var Z = ((((this.b * this.b) / (this.a * this.a)) * rSubN) + latLonAlt.alt) * sinLat;
 
         return {x:X, y:Y, z:Z};
     };
@@ -115,6 +114,10 @@ dis.CoordinateConversion = function()
  
  exports.CoordinateConversion = dis.CoordinateConversion;
 /**
+ * Obsolete--the code generation now includes methods for accessing bit
+ * fields such as this. Remains only for backward compatiblity, and I doubt
+ * anyone is using it.
+ * 
  * Some code to extract the entity apperance bit fields.<p>
  * 
  * The entityAppearance field in the espdu is a 32 bit integer. To save
@@ -343,6 +346,21 @@ dis.OutputStream = function(binaryDataBuffer)
     this.dataView = new DataView(this.binaryData); // data, byte offset
     this.currentPosition = 0;                    // ptr to current position in array
     
+    /**
+     * Returns a byte array trimmed to the maximum number of bytes written
+     * to the stream. Eg, if we initialize with a 500 byte bufer, and we
+     * only write 10 bytes to the output stream, this will return the first
+     * ten bytes of the array.
+     * 
+     * @returns {ArrayBuffer} Only the data written
+     */
+    dis.OutputStream.prototype.toByteArray = function()
+    {
+        var trimmedData = this.binaryData.slice(0, this.currentPosition); 
+        return trimmedData;
+    };
+    
+    
     dis.OutputStream.prototype.writeUByte = function(userData)
     {   
         this.dataView.setUint8(this.currentPosition, userData);
@@ -443,54 +461,54 @@ if (typeof exports === "undefined")
      var inputStream = new dis.InputStream(data);
      var newPdu = null;
      
-     try
-     {
+     //try
+     //{
         switch(pduType)
         {
             case 1:     // entity state PDU
                 newPdu = new dis.EntityStatePdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break;
 
             case 2:     // Fire
                 newPdu = new dis.FirePdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break; 
 
             case 3:     // detonation
                 newPdu = new dis.DetonationPdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break;
 
             case 4:     // Collision
                 newPdu = new dis.CollisionPdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break;
 
             case 11:    // Create entity
                 newPdu = new dis.CreateEntityPdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break;
 
             case 12:    // Remove entity
                 newPdu = new dis.RemoveEntityPdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break;
 
             case 20:    // data
                 newPdu = new dis.DataPdu();
-                newPdu.initFromBinaryDIS(inputStream);
+                newPdu.initFromBinary(inputStream);
                 break;
 
             default:
                throw  "PduType: " + pduType + " Unrecognized PDUType. Add PDU in dis.PduFactory.";
         }
-    }
+    //}
     // This also picks up any errors decoding what we though was a "normal" PDU
-    catch(error)
-    {
-      newPdu = null;
-    }
+    //catch(error)
+    //{
+    //  newPdu = null;
+    //}
      
      return newPdu;
  };
@@ -915,12 +933,12 @@ exports.OutputStream = dis.OutputStream;
 /**
  * Section 7.5.6. Acknowledge the receipt of a start/resume, stop/freeze, or RemoveEntityPDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -963,12 +981,6 @@ dis.AcknowledgePdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for originating entity(or simulation) */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the receiving entity(or simulation) */
-   this.receivingID = new dis.EntityID(); 
-
    /** type of message being acknowledged */
    this.acknowledgeFlag = 0;
 
@@ -978,29 +990,25 @@ dis.AcknowledgePdu = function()
    /** Request ID that is unique */
    this.requestID = 0;
 
-  dis.AcknowledgePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AcknowledgePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.acknowledgeFlag = inputStream.readUShort();
        this.responseFlag = inputStream.readUShort();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.AcknowledgePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AcknowledgePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -1009,10 +1017,8 @@ dis.AcknowledgePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.acknowledgeFlag);
        outputStream.writeUShort(this.responseFlag);
        outputStream.writeUInt(this.requestID);
@@ -1027,12 +1033,12 @@ exports.AcknowledgePdu = dis.AcknowledgePdu;
 /**
  * Section 5.3.12.5: Ack receipt of a start-resume, stop-freeze, create-entity or remove enitty (reliable) pdus. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1084,27 +1090,25 @@ dis.AcknowledgeReliablePdu = function()
    /** Request ID */
    this.requestID = 0;
 
-  dis.AcknowledgeReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AcknowledgeReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.acknowledgeFlag = inputStream.readUShort();
        this.responseFlag = inputStream.readUShort();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.AcknowledgeReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AcknowledgeReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -1113,8 +1117,8 @@ dis.AcknowledgeReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.acknowledgeFlag);
        outputStream.writeUShort(this.responseFlag);
        outputStream.writeUInt(this.requestID);
@@ -1129,12 +1133,12 @@ exports.AcknowledgeReliablePdu = dis.AcknowledgeReliablePdu;
 /**
  *  information about a specific UA emmtter. Section 6.2.2.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1156,17 +1160,15 @@ dis.AcousticEmitter = function()
    /** The UA emitter identification number relative to a specific system */
    this.acousticIDNumber = 0;
 
-  dis.AcousticEmitter.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AcousticEmitter.prototype.initFromBinary = function(inputStream)
   {
-
        this.acousticSystemName = inputStream.readUShort();
        this.acousticFunction = inputStream.readUByte();
        this.acousticIDNumber = inputStream.readUByte();
   };
 
-  dis.AcousticEmitter.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AcousticEmitter.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.acousticSystemName);
        outputStream.writeUByte(this.acousticFunction);
        outputStream.writeUByte(this.acousticIDNumber);
@@ -1181,12 +1183,12 @@ exports.AcousticEmitter = dis.AcousticEmitter;
 /**
  * Section 7.5.7. Request from simulation manager to a managed entity to perform a specified action. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1229,12 +1231,6 @@ dis.ActionRequestPdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for originating entity(or simulation) */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the receiving entity(or simulation) */
-   this.receivingID = new dis.EntityID(); 
-
    /** identifies the request being made by the simulaton manager */
    this.requestID = 0;
 
@@ -1253,44 +1249,40 @@ dis.ActionRequestPdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.ActionRequestPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ActionRequestPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
-       this.actionID = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
+       this.actionID = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.ActionRequestPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ActionRequestPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -1299,22 +1291,20 @@ dis.ActionRequestPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUInt(this.actionID);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -1328,12 +1318,12 @@ exports.ActionRequestPdu = dis.ActionRequestPdu;
 /**
  * Section 5.3.12.6: request from a simulation manager to a managed entity to perform a specified action. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1403,45 +1393,43 @@ dis.ActionRequestReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.ActionRequestReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ActionRequestReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
-       this.actionID = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
+       this.actionID = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.ActionRequestReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ActionRequestReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -1450,8 +1438,8 @@ dis.ActionRequestReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
        outputStream.writeUByte(this.pad2);
@@ -1461,12 +1449,12 @@ dis.ActionRequestReliablePdu = function()
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -1480,12 +1468,12 @@ exports.ActionRequestReliablePdu = dis.ActionRequestReliablePdu;
 /**
  * Section 7.5.8. response to an action request PDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1528,12 +1516,6 @@ dis.ActionResponsePdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for originating entity(or simulation) */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the receiving entity(or simulation) */
-   this.receivingID = new dis.EntityID(); 
-
    /** Request ID that is unique */
    this.requestID = 0;
 
@@ -1552,44 +1534,40 @@ dis.ActionResponsePdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.ActionResponsePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ActionResponsePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
-       this.requestStatus = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
+       this.requestStatus = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.ActionResponsePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ActionResponsePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -1598,22 +1576,20 @@ dis.ActionResponsePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUInt(this.requestStatus);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -1627,12 +1603,12 @@ exports.ActionResponsePdu = dis.ActionResponsePdu;
 /**
  * Section 5.3.12.7: Response from an entity to an action request PDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1693,42 +1669,40 @@ dis.ActionResponseReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.ActionResponseReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ActionResponseReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
-       this.responseStatus = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
+       this.responseStatus = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.ActionResponseReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ActionResponseReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -1737,20 +1711,20 @@ dis.ActionResponseReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUInt(this.responseStatus);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -1764,12 +1738,12 @@ exports.ActionResponseReliablePdu = dis.ActionResponseReliablePdu;
 /**
  * The unique designation of each aggrgate in an exercise is specified by an aggregate identifier record. The aggregate ID is not an entity and shall not be treated as such. Section 6.2.3.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1785,20 +1759,18 @@ dis.AggregateIdentifier = function()
    /** Simulation address, ie site and application, the first two fields of the entity ID */
    this.simulationAddress = new dis.SimulationAddress(); 
 
-   /** the aggregate ID */
+   /** the aggregate ID, an object identifier */
    this.aggregateID = 0;
 
-  dis.AggregateIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AggregateIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.aggregateID = inputStream.readUShort();
   };
 
-  dis.AggregateIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AggregateIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.aggregateID);
   };
 }; // end of class
@@ -1811,12 +1783,12 @@ exports.AggregateIdentifier = dis.AggregateIdentifier;
 /**
  * Specifies the character set used in the first byte, followed by up to 31 characters of text data. Section 6.2.4. 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1833,26 +1805,18 @@ dis.AggregateMarking = function()
    this.characterSet = 0;
 
    /** The characters */
-   this.characters = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+   this.characters = 0;
 
-  dis.AggregateMarking.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AggregateMarking.prototype.initFromBinary = function(inputStream)
   {
-
        this.characterSet = inputStream.readUByte();
-       for(var idx = 0; idx < 31; idx++)
-       {
-          this.characters[ idx ] = inputStream.readUnsignedByte();
-       }
+       this.characters = inputStream.readUByte();
   };
 
-  dis.AggregateMarking.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AggregateMarking.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.characterSet);
-       for(var idx = 0; idx < 31; idx++)
-       {
-          outputStream.writeUnsignedByte(this.characters[ idx ] );
-       }
+       outputStream.writeUByte(this.characters);
   };
 }; // end of class
 
@@ -1864,12 +1828,12 @@ exports.AggregateMarking = dis.AggregateMarking;
 /**
  * Identifies the type and organization of an aggregate. Section 6.2.5
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1900,11 +1864,11 @@ dis.AggregateType = function()
    /** specific info based on subcategory field. specific is a reserved word in sql. */
    this.specificInfo = 0;
 
+   /** extra information needed to describe the aggregate */
    this.extra = 0;
 
-  dis.AggregateType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AggregateType.prototype.initFromBinary = function(inputStream)
   {
-
        this.aggregateKind = inputStream.readUByte();
        this.domain = inputStream.readUByte();
        this.country = inputStream.readUShort();
@@ -1914,9 +1878,8 @@ dis.AggregateType = function()
        this.extra = inputStream.readUByte();
   };
 
-  dis.AggregateType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AggregateType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.aggregateKind);
        outputStream.writeUByte(this.domain);
        outputStream.writeUShort(this.country);
@@ -1935,12 +1898,12 @@ exports.AggregateType = dis.AggregateType;
 /**
  * The Angle Deception attribute record may be used to communicate discrete values that are associated with angle deception jamming that cannot be referenced to an emitter mode. The values provided in the record records (provided in the associated Electromagnetic Emission PDU). (The victim radar beams are those that are targeted by the jammer.) Section 6.2.21.2.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -1985,10 +1948,9 @@ dis.AngleDeception = function()
 
    this.padding3 = 0;
 
-  dis.AngleDeception.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AngleDeception.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.padding = inputStream.readUShort();
        this.emitterNumber = inputStream.readUByte();
@@ -2003,12 +1965,11 @@ dis.AngleDeception = function()
        this.elevationWidth = inputStream.readFloat32();
        this.elevationPullRate = inputStream.readFloat32();
        this.elevationPullAcceleration = inputStream.readFloat32();
-       this.padding3 = inputStream.readInt();
+       this.padding3 = inputStream.readUInt();
   };
 
-  dis.AngleDeception.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AngleDeception.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUShort(this.padding);
@@ -2036,12 +1997,12 @@ exports.AngleDeception = dis.AngleDeception;
 /**
  * Angular velocity measured in radians per second out each of the entity's own coordinate axes. Order of measurement is angular velocity around the x, y, and z axis of the entity. The positive direction is determined by the right hand rule. Section 6.2.7
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2063,17 +2024,15 @@ dis.AngularVelocityVector = function()
    /** velocity about the zaxis */
    this.z = 0;
 
-  dis.AngularVelocityVector.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AngularVelocityVector.prototype.initFromBinary = function(inputStream)
   {
-
        this.x = inputStream.readFloat32();
        this.y = inputStream.readFloat32();
        this.z = inputStream.readFloat32();
   };
 
-  dis.AngularVelocityVector.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AngularVelocityVector.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.x);
        outputStream.writeFloat32(this.y);
        outputStream.writeFloat32(this.z);
@@ -2088,12 +2047,12 @@ exports.AngularVelocityVector = dis.AngularVelocityVector;
 /**
  * Location of the radiating portion of the antenna, specified in world coordinates and entity coordinates. Section 6.2.8
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2112,18 +2071,16 @@ dis.AntennaLocation = function()
    /** Location of the radiating portion of the antenna     in entity coordinates */
    this.relativeAntennaLocation = new dis.Vector3Float(); 
 
-  dis.AntennaLocation.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AntennaLocation.prototype.initFromBinary = function(inputStream)
   {
-
-       this.antennaLocation.initFromBinaryDIS(inputStream);
-       this.relativeAntennaLocation.initFromBinaryDIS(inputStream);
+       this.antennaLocation.initFromBinary(inputStream);
+       this.relativeAntennaLocation.initFromBinary(inputStream);
   };
 
-  dis.AntennaLocation.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AntennaLocation.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.antennaLocation.encodeToBinaryDIS(outputStream);
-       this.relativeAntennaLocation.encodeToBinaryDIS(outputStream);
+       this.antennaLocation.encodeToBinary(outputStream);
+       this.relativeAntennaLocation.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -2135,12 +2092,12 @@ exports.AntennaLocation = dis.AntennaLocation;
 /**
  * Information about the addition/modification of an oobject that is geometrically anchored to the terrain with a set of three or more points that come to a closure. Section 7.10.6 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2213,40 +2170,38 @@ dis.ArealObjectStatePdu = function()
    /** location of object */
     this.objectLocation = new Array();
  
-  dis.ArealObjectStatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ArealObjectStatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.objectID.initFromBinaryDIS(inputStream);
-       this.referencedObjectID.initFromBinaryDIS(inputStream);
+       this.objectID.initFromBinary(inputStream);
+       this.referencedObjectID.initFromBinary(inputStream);
        this.updateNumber = inputStream.readUShort();
        this.forceID = inputStream.readUByte();
        this.modifications = inputStream.readUByte();
-       this.objectType.initFromBinaryDIS(inputStream);
-       this.specificObjectAppearance = inputStream.readInt();
+       this.objectType.initFromBinary(inputStream);
+       this.specificObjectAppearance = inputStream.readUInt();
        this.generalObjectAppearance = inputStream.readUShort();
        this.numberOfPoints = inputStream.readUShort();
-       this.requesterID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
+       this.requesterID.initFromBinary(inputStream);
+       this.receivingID.initFromBinary(inputStream);
        for(var idx = 0; idx < this.numberOfPoints; idx++)
        {
            var anX = new dis.Vector3Double();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.objectLocation.push(anX);
        }
 
   };
 
-  dis.ArealObjectStatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ArealObjectStatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -2255,20 +2210,20 @@ dis.ArealObjectStatePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.objectID.encodeToBinaryDIS(outputStream);
-       this.referencedObjectID.encodeToBinaryDIS(outputStream);
+       this.objectID.encodeToBinary(outputStream);
+       this.referencedObjectID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.updateNumber);
        outputStream.writeUByte(this.forceID);
        outputStream.writeUByte(this.modifications);
-       this.objectType.encodeToBinaryDIS(outputStream);
+       this.objectType.encodeToBinary(outputStream);
        outputStream.writeUInt(this.specificObjectAppearance);
        outputStream.writeUShort(this.generalObjectAppearance);
        outputStream.writeUShort(this.numberOfPoints);
-       this.requesterID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.requesterID.encodeToBinary(outputStream);
+       this.receivingID.encodeToBinary(outputStream);
        for(var idx = 0; idx < this.objectLocation.length; idx++)
        {
-           objectLocation[idx].encodeToBinaryDIS(outputStream);
+           objectLocation[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -2282,12 +2237,12 @@ exports.ArealObjectStatePdu = dis.ArealObjectStatePdu;
 /**
  *  articulated parts for movable parts and a combination of moveable/attached parts of an entity. Section 6.2.94.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2315,19 +2270,17 @@ dis.ArticulatedParts = function()
    /** The definition of the 64 bits shall be determined based on the type of parameter specified in the Parameter Type field  */
    this.parameterValue = 0;
 
-  dis.ArticulatedParts.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ArticulatedParts.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUByte();
        this.changeIndicator = inputStream.readUByte();
        this.partAttachedTo = inputStream.readUShort();
-       this.parameterType = inputStream.readInt();
+       this.parameterType = inputStream.readUInt();
        this.parameterValue = inputStream.readLong();
   };
 
-  dis.ArticulatedParts.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ArticulatedParts.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.recordType);
        outputStream.writeUByte(this.changeIndicator);
        outputStream.writeUShort(this.partAttachedTo);
@@ -2344,12 +2297,12 @@ exports.ArticulatedParts = dis.ArticulatedParts;
 /**
  * An entity's associations with other entities and/or locations. For each association, this record shall specify the type of the association, the associated entity's EntityID and/or the associated location's world coordinates. This record may be used (optionally) in a transfer transaction to send internal state data from the divesting simulation to the acquiring simulation (see 5.9.4). This record may also be used for other purposes. Section 6.2.9
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2372,22 +2325,20 @@ dis.Association = function()
    /** location, in world coordinates */
    this.associatedLocation = new dis.Vector3Double(); 
 
-  dis.Association.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Association.prototype.initFromBinary = function(inputStream)
   {
-
        this.associationType = inputStream.readUByte();
        this.padding4 = inputStream.readUByte();
-       this.associatedEntityID.initFromBinaryDIS(inputStream);
-       this.associatedLocation.initFromBinaryDIS(inputStream);
+       this.associatedEntityID.initFromBinary(inputStream);
+       this.associatedLocation.initFromBinary(inputStream);
   };
 
-  dis.Association.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Association.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.associationType);
        outputStream.writeUByte(this.padding4);
-       this.associatedEntityID.encodeToBinaryDIS(outputStream);
-       this.associatedLocation.encodeToBinaryDIS(outputStream);
+       this.associatedEntityID.encodeToBinary(outputStream);
+       this.associatedLocation.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -2399,12 +2350,12 @@ exports.Association = dis.Association;
 /**
  * Removable parts that may be attached to an entity.  Section 6.2.93.3
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2432,19 +2383,17 @@ dis.AttachedParts = function()
    /** The definition of the 64 bits shall be determined based on the type of parameter specified in the Parameter Type field  */
    this.parameterValue = 0;
 
-  dis.AttachedParts.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AttachedParts.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUByte();
        this.detachedIndicator = inputStream.readUByte();
        this.partAttachedTo = inputStream.readUShort();
-       this.parameterType = inputStream.readInt();
+       this.parameterType = inputStream.readUInt();
        this.parameterValue = inputStream.readLong();
   };
 
-  dis.AttachedParts.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AttachedParts.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.recordType);
        outputStream.writeUByte(this.detachedIndicator);
        outputStream.writeUShort(this.partAttachedTo);
@@ -2461,12 +2410,12 @@ exports.AttachedParts = dis.AttachedParts;
 /**
  * Used to convey information for one or more attributes. Attributes conform to the standard variable record format of 6.2.82. Section 6.2.10. NOT COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2485,17 +2434,15 @@ dis.Attribute = function()
 
    this.recordSpecificFields = 0;
 
-  dis.Attribute.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Attribute.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.recordSpecificFields = inputStream.readLong();
   };
 
-  dis.Attribute.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Attribute.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeLong(this.recordSpecificFields);
@@ -2510,12 +2457,12 @@ exports.Attribute = dis.Attribute;
 /**
  * Information about individual attributes for a particular entity, other object, or event may be communicated using an Attribute PDU. The Attribute PDU shall not be used to exchange data available in any other PDU except where explicitly mentioned in the PDU issuance instructions within this standard. See 5.3.6 for the information requirements and issuance and receipt rules for this PDU. Section 7.2.6. INCOMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2579,31 +2526,29 @@ dis.AttributePdu = function()
    /** This field shall specify the number of Attribute Record Sets that make up the remainder of the PDU. It shall be represented by a 16-bit unsigned integer. */
    this.numberAttributeRecordSet = 0;
 
-  dis.AttributePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.AttributePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingSimulationAddress.initFromBinaryDIS(inputStream);
+       this.originatingSimulationAddress.initFromBinary(inputStream);
        this.padding1 = inputStream.readInt();
        this.padding2 = inputStream.readShort();
        this.attributeRecordPduType = inputStream.readUByte();
        this.attributeRecordProtocolVersion = inputStream.readUByte();
-       this.masterAttributeRecordType = inputStream.readInt();
+       this.masterAttributeRecordType = inputStream.readUInt();
        this.actionCode = inputStream.readUByte();
        this.padding3 = inputStream.readByte();
        this.numberAttributeRecordSet = inputStream.readUShort();
   };
 
-  dis.AttributePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.AttributePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -2612,7 +2557,7 @@ dis.AttributePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingSimulationAddress.encodeToBinaryDIS(outputStream);
+       this.originatingSimulationAddress.encodeToBinary(outputStream);
        outputStream.writeInt(this.padding1);
        outputStream.writeShort(this.padding2);
        outputStream.writeUByte(this.attributeRecordPduType);
@@ -2632,12 +2577,12 @@ exports.AttributePdu = dis.AttributePdu;
 /**
  * Used when the antenna pattern type field has a value of 1. Specifies the direction, pattern, and polarization of radiation from an antenna. Section 6.2.9.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2675,10 +2620,9 @@ dis.BeamAntennaPattern = function()
    /** padding */
    this.padding3 = 0;
 
-  dis.BeamAntennaPattern.prototype.initFromBinaryDIS = function(inputStream)
+  dis.BeamAntennaPattern.prototype.initFromBinary = function(inputStream)
   {
-
-       this.beamDirection.initFromBinaryDIS(inputStream);
+       this.beamDirection.initFromBinary(inputStream);
        this.azimuthBeamwidth = inputStream.readFloat32();
        this.elevationBeamwidth = inputStream.readFloat32();
        this.referenceSystem = inputStream.readUByte();
@@ -2687,13 +2631,12 @@ dis.BeamAntennaPattern = function()
        this.ez = inputStream.readFloat32();
        this.ex = inputStream.readFloat32();
        this.phase = inputStream.readFloat32();
-       this.padding3 = inputStream.readInt();
+       this.padding3 = inputStream.readUInt();
   };
 
-  dis.BeamAntennaPattern.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.BeamAntennaPattern.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.beamDirection.encodeToBinaryDIS(outputStream);
+       this.beamDirection.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.azimuthBeamwidth);
        outputStream.writeFloat32(this.elevationBeamwidth);
        outputStream.writeUByte(this.referenceSystem);
@@ -2714,12 +2657,12 @@ exports.BeamAntennaPattern = dis.BeamAntennaPattern;
 /**
  * Describes the scan volue of an emitter beam. Section 6.2.11.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2747,9 +2690,8 @@ dis.BeamData = function()
    /** allows receiver to synchronize its regenerated scan pattern to that of the emmitter. Specifies the percentage of time a scan is through its pattern from its origion. */
    this.beamSweepSync = 0;
 
-  dis.BeamData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.BeamData.prototype.initFromBinary = function(inputStream)
   {
-
        this.beamAzimuthCenter = inputStream.readFloat32();
        this.beamAzimuthSweep = inputStream.readFloat32();
        this.beamElevationCenter = inputStream.readFloat32();
@@ -2757,9 +2699,8 @@ dis.BeamData = function()
        this.beamSweepSync = inputStream.readFloat32();
   };
 
-  dis.BeamData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.BeamData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.beamAzimuthCenter);
        outputStream.writeFloat32(this.beamAzimuthSweep);
        outputStream.writeFloat32(this.beamElevationCenter);
@@ -2776,12 +2717,12 @@ exports.BeamData = dis.BeamData;
 /**
  * Information related to the status of a beam. This is contained in the beam status field of the electromagnitec emission PDU. The first bit determines whether the beam is active (0) or deactivated (1). Section 6.2.12.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2797,17 +2738,49 @@ dis.BeamStatus = function()
    /** First bit zero means beam is active, first bit = 1 means deactivated. The rest is padding. */
    this.beamState = 0;
 
-  dis.BeamStatus.prototype.initFromBinaryDIS = function(inputStream)
+  dis.BeamStatus.prototype.initFromBinary = function(inputStream)
   {
-
        this.beamState = inputStream.readUByte();
   };
 
-  dis.BeamStatus.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.BeamStatus.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.beamState);
   };
+
+/** 0 active, 1 deactivated */
+dis.BeamStatus.prototype.getBeamState_beamState = function()
+{
+   var val = this.beamState & 0x1;
+   return val >> 0;
+};
+
+
+/** 0 active, 1 deactivated */
+dis.BeamStatus.prototype.setBeamState_beamState= function(val)
+{
+  this.beamState &= ~0x1; // Zero existing bits
+  val = val << 0;
+  this.beamState = this.beamState | val; 
+};
+
+
+/** padding */
+dis.BeamStatus.prototype.getBeamState_padding = function()
+{
+   var val = this.beamState & 0xFE;
+   return val >> 1;
+};
+
+
+/** padding */
+dis.BeamStatus.prototype.setBeamState_padding= function(val)
+{
+  this.beamState &= ~0xFE; // Zero existing bits
+  val = val << 1;
+  this.beamState = this.beamState | val; 
+};
+
 }; // end of class
 
  // node.js module support
@@ -2818,12 +2791,12 @@ exports.BeamStatus = dis.BeamStatus;
 /**
  * The Blanking Sector attribute record may be used to convey persistent areas within a scan volume where emitter power for a specific active emitter beam is reduced to an insignificant value. Section 6.2.21.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2864,9 +2837,8 @@ dis.BlankingSector = function()
 
    this.padding4 = 0;
 
-  dis.BlankingSector.prototype.initFromBinaryDIS = function(inputStream)
+  dis.BlankingSector.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readInt();
        this.recordLength = inputStream.readUShort();
        this.padding = inputStream.readUShort();
@@ -2883,9 +2855,8 @@ dis.BlankingSector = function()
        this.padding4 = inputStream.readInt();
   };
 
-  dis.BlankingSector.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.BlankingSector.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUShort(this.padding);
@@ -2911,12 +2882,12 @@ exports.BlankingSector = dis.BlankingSector;
 /**
  * This is wrong and breaks serialization. See section 6.2.13 aka B.2.41
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2929,14 +2900,12 @@ if (typeof exports === "undefined")
 
 dis.ChangeOptions = function()
 {
-  dis.ChangeOptions.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ChangeOptions.prototype.initFromBinary = function(inputStream)
   {
-
   };
 
-  dis.ChangeOptions.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ChangeOptions.prototype.encodeToBinary = function(outputStream)
   {
-
   };
 }; // end of class
 
@@ -2948,12 +2917,12 @@ exports.ChangeOptions = dis.ChangeOptions;
 /**
  * Time measurements that exceed one hour are represented by this record. The first field is the hours since the unix epoch (Jan 1 1970, used by most Unix systems and java) and the second field the timestamp units since the top of the hour. Section 6.2.14
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -2966,24 +2935,22 @@ if (typeof exports === "undefined")
 
 dis.ClockTime = function()
 {
-   /** Hours in UTC */
+   /** Hours since midnight, 1970, UTC */
    this.hour = 0;
 
-   /** Time past the hour */
-   this.timePastHour = 0;
+   /** Time past the hour, in timestamp form */
+   this.timePastHour = new dis.Timestamp(); 
 
-  dis.ClockTime.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ClockTime.prototype.initFromBinary = function(inputStream)
   {
-
-       this.hour = inputStream.readInt();
-       this.timePastHour = inputStream.readInt();
+       this.hour = inputStream.readUInt();
+       this.timePastHour.initFromBinary(inputStream);
   };
 
-  dis.ClockTime.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ClockTime.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.hour);
-       outputStream.writeUInt(this.timePastHour);
+       this.timePastHour.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -2995,12 +2962,12 @@ exports.ClockTime = dis.ClockTime;
 /**
  * Information about elastic collisions in a DIS exercise shall be communicated using a Collision-Elastic PDU. Section 7.2.4. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3082,37 +3049,35 @@ dis.CollisionElasticPdu = function()
    /** This field shall represent the degree to which energy is conserved in a collision and shall be represented by a 32-bit floating point number. In addition, it represents a free parameter by which simulation application developers may “tune” their collision interactions. */
    this.coefficientOfRestitution = 0;
 
-  dis.CollisionElasticPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CollisionElasticPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.issuingEntityID.initFromBinaryDIS(inputStream);
-       this.collidingEntityID.initFromBinaryDIS(inputStream);
-       this.collisionEventID.initFromBinaryDIS(inputStream);
+       this.issuingEntityID.initFromBinary(inputStream);
+       this.collidingEntityID.initFromBinary(inputStream);
+       this.collisionEventID.initFromBinary(inputStream);
        this.pad = inputStream.readShort();
-       this.contactVelocity.initFromBinaryDIS(inputStream);
+       this.contactVelocity.initFromBinary(inputStream);
        this.mass = inputStream.readFloat32();
-       this.locationOfImpact.initFromBinaryDIS(inputStream);
+       this.locationOfImpact.initFromBinary(inputStream);
        this.collisionIntermediateResultXX = inputStream.readFloat32();
        this.collisionIntermediateResultXY = inputStream.readFloat32();
        this.collisionIntermediateResultXZ = inputStream.readFloat32();
        this.collisionIntermediateResultYY = inputStream.readFloat32();
        this.collisionIntermediateResultYZ = inputStream.readFloat32();
        this.collisionIntermediateResultZZ = inputStream.readFloat32();
-       this.unitSurfaceNormal.initFromBinaryDIS(inputStream);
+       this.unitSurfaceNormal.initFromBinary(inputStream);
        this.coefficientOfRestitution = inputStream.readFloat32();
   };
 
-  dis.CollisionElasticPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CollisionElasticPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3121,20 +3086,20 @@ dis.CollisionElasticPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.issuingEntityID.encodeToBinaryDIS(outputStream);
-       this.collidingEntityID.encodeToBinaryDIS(outputStream);
-       this.collisionEventID.encodeToBinaryDIS(outputStream);
+       this.issuingEntityID.encodeToBinary(outputStream);
+       this.collidingEntityID.encodeToBinary(outputStream);
+       this.collisionEventID.encodeToBinary(outputStream);
        outputStream.writeShort(this.pad);
-       this.contactVelocity.encodeToBinaryDIS(outputStream);
+       this.contactVelocity.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.mass);
-       this.locationOfImpact.encodeToBinaryDIS(outputStream);
+       this.locationOfImpact.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.collisionIntermediateResultXX);
        outputStream.writeFloat32(this.collisionIntermediateResultXY);
        outputStream.writeFloat32(this.collisionIntermediateResultXZ);
        outputStream.writeFloat32(this.collisionIntermediateResultYY);
        outputStream.writeFloat32(this.collisionIntermediateResultYZ);
        outputStream.writeFloat32(this.collisionIntermediateResultZZ);
-       this.unitSurfaceNormal.encodeToBinaryDIS(outputStream);
+       this.unitSurfaceNormal.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.coefficientOfRestitution);
   };
 }; // end of class
@@ -3147,12 +3112,12 @@ exports.CollisionElasticPdu = dis.CollisionElasticPdu;
 /**
  * Section 7.2.3 Collisions between entities shall be communicated by issuing a Collision PDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3213,30 +3178,28 @@ dis.CollisionPdu = function()
    /** This field shall specify the location of the collision with respect to the entity with which the issuing entity collided. The Location field shall be represented by an Entity Coordinate Vector record [see 6.2.95 item a)]. */
    this.location = new dis.Vector3Float(); 
 
-  dis.CollisionPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CollisionPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.issuingEntityID.initFromBinaryDIS(inputStream);
-       this.collidingEntityID.initFromBinaryDIS(inputStream);
-       this.eventID.initFromBinaryDIS(inputStream);
+       this.issuingEntityID.initFromBinary(inputStream);
+       this.collidingEntityID.initFromBinary(inputStream);
+       this.eventID.initFromBinary(inputStream);
        this.collisionType = inputStream.readUByte();
        this.pad = inputStream.readByte();
-       this.velocity.initFromBinaryDIS(inputStream);
+       this.velocity.initFromBinary(inputStream);
        this.mass = inputStream.readFloat32();
-       this.location.initFromBinaryDIS(inputStream);
+       this.location.initFromBinary(inputStream);
   };
 
-  dis.CollisionPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CollisionPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3245,14 +3208,14 @@ dis.CollisionPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.issuingEntityID.encodeToBinaryDIS(outputStream);
-       this.collidingEntityID.encodeToBinaryDIS(outputStream);
-       this.eventID.encodeToBinaryDIS(outputStream);
+       this.issuingEntityID.encodeToBinary(outputStream);
+       this.collidingEntityID.encodeToBinary(outputStream);
+       this.eventID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.collisionType);
        outputStream.writeByte(this.pad);
-       this.velocity.encodeToBinaryDIS(outputStream);
+       this.velocity.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.mass);
-       this.location.encodeToBinaryDIS(outputStream);
+       this.location.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -3264,12 +3227,12 @@ exports.CollisionPdu = dis.CollisionPdu;
 /**
  *  Arbitrary messages can be entered into the data stream via use of this PDU. Section 7.5.13 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3324,40 +3287,38 @@ dis.CommentPdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.CommentPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CommentPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.CommentPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CommentPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3366,18 +3327,18 @@ dis.CommentPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -3391,12 +3352,12 @@ exports.CommentPdu = dis.CommentPdu;
 /**
  * Section 5.3.12.12: Arbitrary messages. Only reliable this time. Neds manual intervention     to fix padding in variable datums. UNFINISHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3451,40 +3412,38 @@ dis.CommentReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.CommentReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CommentReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.CommentReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CommentReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3493,18 +3452,18 @@ dis.CommentReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -3518,12 +3477,12 @@ exports.CommentReliablePdu = dis.CommentReliablePdu;
 /**
  * Identity of a communications node. Section 6.2.48.4
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3540,17 +3499,15 @@ dis.CommunicationsNodeID = function()
 
    this.elementID = 0;
 
-  dis.CommunicationsNodeID.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CommunicationsNodeID.prototype.initFromBinary = function(inputStream)
   {
-
-       this.entityID.initFromBinaryDIS(inputStream);
+       this.entityID.initFromBinary(inputStream);
        this.elementID = inputStream.readUShort();
   };
 
-  dis.CommunicationsNodeID.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CommunicationsNodeID.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.entityID.encodeToBinaryDIS(outputStream);
+       this.entityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.elementID);
   };
 }; // end of class
@@ -3563,12 +3520,12 @@ exports.CommunicationsNodeID = dis.CommunicationsNodeID;
 /**
  * Section 7.5.2. Create a new entity. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3611,36 +3568,26 @@ dis.CreateEntityPdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for the request */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the request */
-   this.receivingID = new dis.EntityID(); 
-
    /** Identifier for the request.  See 6.2.75 */
    this.requestID = 0;
 
-  dis.CreateEntityPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CreateEntityPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.CreateEntityPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CreateEntityPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3649,10 +3596,8 @@ dis.CreateEntityPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
   };
 }; // end of class
@@ -3665,12 +3610,12 @@ exports.CreateEntityPdu = dis.CreateEntityPdu;
 /**
  * Section 5.3.12.1: creation of an entity , reliable. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3725,28 +3670,26 @@ dis.CreateEntityReliablePdu = function()
    /** Request ID */
    this.requestID = 0;
 
-  dis.CreateEntityReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.CreateEntityReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.CreateEntityReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.CreateEntityReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3755,8 +3698,8 @@ dis.CreateEntityReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
        outputStream.writeUByte(this.pad2);
@@ -3772,12 +3715,12 @@ exports.CreateEntityReliablePdu = dis.CreateEntityReliablePdu;
 /**
  * identify which of the optional data fields are contained in the Minefield Data PDU or requested in the Minefield Query PDU. This is a 32-bit record. For each field, true denotes that the data is requested or present and false denotes that the data is neither requested nor present. Section 6.2.16
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3793,17 +3736,219 @@ dis.DataFilterRecord = function()
    /** Bitflags field */
    this.bitFlags = 0;
 
-  dis.DataFilterRecord.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DataFilterRecord.prototype.initFromBinary = function(inputStream)
   {
-
-       this.bitFlags = inputStream.readInt();
+       this.bitFlags = inputStream.readUInt();
   };
 
-  dis.DataFilterRecord.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DataFilterRecord.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.bitFlags);
   };
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_groundBurialDepthOffset = function()
+{
+   var val = this.bitFlags & 0x1;
+   return val >> 0;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_groundBurialDepthOffset= function(val)
+{
+  this.bitFlags &= ~0x1; // Zero existing bits
+  val = val << 0;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_waterBurialDepthOffset = function()
+{
+   var val = this.bitFlags & 0x2;
+   return val >> 1;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_waterBurialDepthOffset= function(val)
+{
+  this.bitFlags &= ~0x2; // Zero existing bits
+  val = val << 1;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_snowBurialDepthOffset = function()
+{
+   var val = this.bitFlags & 0x4;
+   return val >> 2;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_snowBurialDepthOffset= function(val)
+{
+  this.bitFlags &= ~0x4; // Zero existing bits
+  val = val << 2;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_mineOrientation = function()
+{
+   var val = this.bitFlags & 0x8;
+   return val >> 3;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_mineOrientation= function(val)
+{
+  this.bitFlags &= ~0x8; // Zero existing bits
+  val = val << 3;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_thermalContrast = function()
+{
+   var val = this.bitFlags & 0x10;
+   return val >> 4;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_thermalContrast= function(val)
+{
+  this.bitFlags &= ~0x10; // Zero existing bits
+  val = val << 4;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_reflectance = function()
+{
+   var val = this.bitFlags & 0x20;
+   return val >> 5;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_reflectance= function(val)
+{
+  this.bitFlags &= ~0x20; // Zero existing bits
+  val = val << 5;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_mineEmplacementTime = function()
+{
+   var val = this.bitFlags & 0x40;
+   return val >> 6;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_mineEmplacementTime= function(val)
+{
+  this.bitFlags &= ~0x40; // Zero existing bits
+  val = val << 6;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_tripDetonationWire = function()
+{
+   var val = this.bitFlags & 0x80;
+   return val >> 7;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_tripDetonationWire= function(val)
+{
+  this.bitFlags &= ~0x80; // Zero existing bits
+  val = val << 7;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_fusing = function()
+{
+   var val = this.bitFlags & 0x100;
+   return val >> 8;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_fusing= function(val)
+{
+  this.bitFlags &= ~0x100; // Zero existing bits
+  val = val << 8;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_scalarDetectionCoefficient = function()
+{
+   var val = this.bitFlags & 0x200;
+   return val >> 9;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_scalarDetectionCoefficient= function(val)
+{
+  this.bitFlags &= ~0x200; // Zero existing bits
+  val = val << 9;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.getBitFlags_paintScheme = function()
+{
+   var val = this.bitFlags & 0x400;
+   return val >> 10;
+};
+
+
+/** boolean */
+dis.DataFilterRecord.prototype.setBitFlags_paintScheme= function(val)
+{
+  this.bitFlags &= ~0x400; // Zero existing bits
+  val = val << 10;
+  this.bitFlags = this.bitFlags | val; 
+};
+
+
+/** padding */
+dis.DataFilterRecord.prototype.getBitFlags_padding = function()
+{
+   var val = this.bitFlags & 0xff800;
+   return val >> 11;
+};
+
+
+/** padding */
+dis.DataFilterRecord.prototype.setBitFlags_padding= function(val)
+{
+  this.bitFlags &= ~0xff800; // Zero existing bits
+  val = val << 11;
+  this.bitFlags = this.bitFlags | val; 
+};
+
 }; // end of class
 
  // node.js module support
@@ -3814,12 +3959,12 @@ exports.DataFilterRecord = dis.DataFilterRecord;
 /**
  *  Information issued in response to a data query pdu or a set data pdu is communicated using a data pdu. Section 7.5.11 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3880,42 +4025,40 @@ dis.DataPdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.DataPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DataPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
-       this.padding1 = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
+       this.padding1 = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.DataPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DataPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -3924,20 +4067,20 @@ dis.DataPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUInt(this.padding1);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -3949,14 +4092,14 @@ exports.DataPdu = dis.DataPdu;
 // End of DataPdu class
 
 /**
- * List of fixed and variable datum records. Section 6.2.17 
+ * List of fixed and variable datum ID records. Section 6.2.17 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -3969,54 +4112,32 @@ if (typeof exports === "undefined")
 
 dis.DataQueryDatumSpecification = function()
 {
-   /** Number of fixed datums */
+   /** Number of fixed datum IDs */
    this.numberOfFixedDatums = 0;
 
-   /** Number of variable datums */
+   /** Number of variable datum IDs */
    this.numberOfVariableDatums = 0;
 
    /** variable length list fixed datum IDs */
-    this.fixedDatumIDList = new Array();
- 
+   this.fixedDatumIDList = new dis.UnsignedDISInteger(); 
+
    /** variable length list variable datum IDs */
-    this.variableDatumIDList = new Array();
- 
-  dis.DataQueryDatumSpecification.prototype.initFromBinaryDIS = function(inputStream)
+   this.variableDatumIDList = new dis.UnsignedDISInteger(); 
+
+  dis.DataQueryDatumSpecification.prototype.initFromBinary = function(inputStream)
   {
-
-       this.numberOfFixedDatums = inputStream.readInt();
-       this.numberOfVariableDatums = inputStream.readInt();
-       for(var idx = 0; idx < this.numberOfFixedDatums; idx++)
-       {
-           var anX = new dis.UnsignedDISInteger();
-           anX.initFromBinaryDIS(inputStream);
-           this.fixedDatumIDList.push(anX);
-       }
-
-       for(var idx = 0; idx < this.numberOfVariableDatums; idx++)
-       {
-           var anX = new dis.UnsignedDISInteger();
-           anX.initFromBinaryDIS(inputStream);
-           this.variableDatumIDList.push(anX);
-       }
-
+       this.numberOfFixedDatums = inputStream.readUInt();
+       this.numberOfVariableDatums = inputStream.readUInt();
+       this.fixedDatumIDList.initFromBinary(inputStream);
+       this.variableDatumIDList.initFromBinary(inputStream);
   };
 
-  dis.DataQueryDatumSpecification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DataQueryDatumSpecification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.numberOfFixedDatums);
        outputStream.writeUInt(this.numberOfVariableDatums);
-       for(var idx = 0; idx < this.fixedDatumIDList.length; idx++)
-       {
-           fixedDatumIDList[idx].encodeToBinaryDIS(outputStream);
-       }
-
-       for(var idx = 0; idx < this.variableDatumIDList.length; idx++)
-       {
-           variableDatumIDList[idx].encodeToBinaryDIS(outputStream);
-       }
-
+       this.fixedDatumIDList.encodeToBinary(outputStream);
+       this.variableDatumIDList.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -4028,12 +4149,12 @@ exports.DataQueryDatumSpecification = dis.DataQueryDatumSpecification;
 /**
  * Section 7.5.9. Request for data from an entity. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4094,42 +4215,40 @@ dis.DataQueryPdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.DataQueryPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DataQueryPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
-       this.timeInterval = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
+       this.timeInterval = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.DataQueryPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DataQueryPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -4138,20 +4257,20 @@ dis.DataQueryPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUInt(this.timeInterval);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -4165,12 +4284,12 @@ exports.DataQueryPdu = dis.DataQueryPdu;
 /**
  * Section 5.3.12.8: request for data from an entity. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4240,45 +4359,43 @@ dis.DataQueryReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.DataQueryReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DataQueryReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
-       this.timeInterval = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
+       this.timeInterval = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.DataQueryReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DataQueryReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -4287,8 +4404,8 @@ dis.DataQueryReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
        outputStream.writeUByte(this.pad2);
@@ -4298,12 +4415,12 @@ dis.DataQueryReliablePdu = function()
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -4317,12 +4434,12 @@ exports.DataQueryReliablePdu = dis.DataQueryReliablePdu;
 /**
  * Section 5.3.12.10: issued in response to a data query R or set dataR pdu. Needs manual intervention      to fix padding on variable datums. UNFINSIHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4389,44 +4506,42 @@ dis.DataReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.DataReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DataReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.DataReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DataReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -4435,8 +4550,8 @@ dis.DataReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
@@ -4445,12 +4560,12 @@ dis.DataReliablePdu = function()
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -4464,12 +4579,12 @@ exports.DataReliablePdu = dis.DataReliablePdu;
 /**
  * List of fixed and variable datum records. Section 6.2.18 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4489,47 +4604,25 @@ dis.DatumSpecification = function()
    this.numberOfVariableDatums = 0;
 
    /** variable length list fixed datums */
-    this.fixedDatumIDList = new Array();
- 
-   /** variable length list variable datums */
-    this.variableDatumIDList = new Array();
- 
-  dis.DatumSpecification.prototype.initFromBinaryDIS = function(inputStream)
+   this.fixedDatumList = new dis.FixedDatum(); 
+
+   /** variable length list variable datums. See 6.2.93 */
+   this.variableDatumList = new dis.VariableDatum(); 
+
+  dis.DatumSpecification.prototype.initFromBinary = function(inputStream)
   {
-
-       this.numberOfFixedDatums = inputStream.readInt();
-       this.numberOfVariableDatums = inputStream.readInt();
-       for(var idx = 0; idx < this.numberOfFixedDatums; idx++)
-       {
-           var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
-           this.fixedDatumIDList.push(anX);
-       }
-
-       for(var idx = 0; idx < this.numberOfVariableDatums; idx++)
-       {
-           var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
-           this.variableDatumIDList.push(anX);
-       }
-
+       this.numberOfFixedDatums = inputStream.readUInt();
+       this.numberOfVariableDatums = inputStream.readUInt();
+       this.fixedDatumList.initFromBinary(inputStream);
+       this.variableDatumList.initFromBinary(inputStream);
   };
 
-  dis.DatumSpecification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DatumSpecification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.numberOfFixedDatums);
        outputStream.writeUInt(this.numberOfVariableDatums);
-       for(var idx = 0; idx < this.fixedDatumIDList.length; idx++)
-       {
-           fixedDatumIDList[idx].encodeToBinaryDIS(outputStream);
-       }
-
-       for(var idx = 0; idx < this.variableDatumIDList.length; idx++)
-       {
-           variableDatumIDList[idx].encodeToBinaryDIS(outputStream);
-       }
-
+       this.fixedDatumList.encodeToBinary(outputStream);
+       this.variableDatumList.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -4541,12 +4634,12 @@ exports.DatumSpecification = dis.DatumSpecification;
 /**
  * Not specified in the standard. This is used by the ESPDU
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4571,28 +4664,26 @@ dis.DeadReckoningParameters = function()
    /** Angular velocity of the entity */
    this.entityAngularVelocity = new dis.Vector3Float(); 
 
-  dis.DeadReckoningParameters.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DeadReckoningParameters.prototype.initFromBinary = function(inputStream)
   {
-
        this.deadReckoningAlgorithm = inputStream.readUByte();
        for(var idx = 0; idx < 15; idx++)
        {
-          this.parameters[ idx ] = inputStream.readUnsignedByte();
+          this.parameters[ idx ] = inputStream.readUByte();
        }
-       this.entityLinearAcceleration.initFromBinaryDIS(inputStream);
-       this.entityAngularVelocity.initFromBinaryDIS(inputStream);
+       this.entityLinearAcceleration.initFromBinary(inputStream);
+       this.entityAngularVelocity.initFromBinary(inputStream);
   };
 
-  dis.DeadReckoningParameters.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DeadReckoningParameters.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.deadReckoningAlgorithm);
        for(var idx = 0; idx < 15; idx++)
        {
-          outputStream.writeUnsignedByte(this.parameters[ idx ] );
+          outputStream.writeUByte(this.parameters[ idx ] );
        }
-       this.entityLinearAcceleration.encodeToBinaryDIS(outputStream);
-       this.entityAngularVelocity.encodeToBinaryDIS(outputStream);
+       this.entityLinearAcceleration.encodeToBinary(outputStream);
+       this.entityAngularVelocity.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -4604,12 +4695,12 @@ exports.DeadReckoningParameters = dis.DeadReckoningParameters;
 /**
  * Section 5.3.7.2. Handles designating operations. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4682,34 +4773,32 @@ dis.DesignatorPdu = function()
    /** linear accelleration of entity */
    this.entityLinearAcceleration = new dis.Vector3Float(); 
 
-  dis.DesignatorPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DesignatorPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.designatingEntityID.initFromBinaryDIS(inputStream);
+       this.designatingEntityID.initFromBinary(inputStream);
        this.codeName = inputStream.readUShort();
-       this.designatedEntityID.initFromBinaryDIS(inputStream);
+       this.designatedEntityID.initFromBinary(inputStream);
        this.designatorCode = inputStream.readUShort();
        this.designatorPower = inputStream.readFloat32();
        this.designatorWavelength = inputStream.readFloat32();
-       this.designatorSpotWrtDesignated.initFromBinaryDIS(inputStream);
-       this.designatorSpotLocation.initFromBinaryDIS(inputStream);
+       this.designatorSpotWrtDesignated.initFromBinary(inputStream);
+       this.designatorSpotLocation.initFromBinary(inputStream);
        this.deadReckoningAlgorithm = inputStream.readByte();
        this.padding1 = inputStream.readUShort();
        this.padding2 = inputStream.readByte();
-       this.entityLinearAcceleration.initFromBinaryDIS(inputStream);
+       this.entityLinearAcceleration.initFromBinary(inputStream);
   };
 
-  dis.DesignatorPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DesignatorPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -4718,18 +4807,18 @@ dis.DesignatorPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.designatingEntityID.encodeToBinaryDIS(outputStream);
+       this.designatingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.codeName);
-       this.designatedEntityID.encodeToBinaryDIS(outputStream);
+       this.designatedEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.designatorCode);
        outputStream.writeFloat32(this.designatorPower);
        outputStream.writeFloat32(this.designatorWavelength);
-       this.designatorSpotWrtDesignated.encodeToBinaryDIS(outputStream);
-       this.designatorSpotLocation.encodeToBinaryDIS(outputStream);
+       this.designatorSpotWrtDesignated.encodeToBinary(outputStream);
+       this.designatorSpotLocation.encodeToBinary(outputStream);
        outputStream.writeByte(this.deadReckoningAlgorithm);
        outputStream.writeUShort(this.padding1);
        outputStream.writeByte(this.padding2);
-       this.entityLinearAcceleration.encodeToBinaryDIS(outputStream);
+       this.entityLinearAcceleration.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -4741,12 +4830,12 @@ exports.DesignatorPdu = dis.DesignatorPdu;
 /**
  * Detonation or impact of munitions, as well as, non-munition explosions, the burst or initial bloom of chaff, and the ignition of a flare shall be indicated. Section 7.3.3  COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4819,40 +4908,38 @@ dis.DetonationPdu = function()
    /** specify the parameter values for each Variable Parameter record, Section 7.3.3  */
     this.variableParameters = new Array();
  
-  dis.DetonationPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DetonationPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.firingEntityID.initFromBinaryDIS(inputStream);
-       this.targetEntityID.initFromBinaryDIS(inputStream);
-       this.explodingEntityID.initFromBinaryDIS(inputStream);
-       this.eventID.initFromBinaryDIS(inputStream);
-       this.velocity.initFromBinaryDIS(inputStream);
-       this.locationInWorldCoordinates.initFromBinaryDIS(inputStream);
-       this.descriptor.initFromBinaryDIS(inputStream);
-       this.locationOfEntityCoordinates.initFromBinaryDIS(inputStream);
+       this.firingEntityID.initFromBinary(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
+       this.explodingEntityID.initFromBinary(inputStream);
+       this.eventID.initFromBinary(inputStream);
+       this.velocity.initFromBinary(inputStream);
+       this.locationInWorldCoordinates.initFromBinary(inputStream);
+       this.descriptor.initFromBinary(inputStream);
+       this.locationOfEntityCoordinates.initFromBinary(inputStream);
        this.detonationResult = inputStream.readUByte();
        this.numberOfVariableParameters = inputStream.readUByte();
        this.pad = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfVariableParameters; idx++)
        {
            var anX = new dis.VariableParameter();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableParameters.push(anX);
        }
 
   };
 
-  dis.DetonationPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DetonationPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -4861,20 +4948,20 @@ dis.DetonationPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.firingEntityID.encodeToBinaryDIS(outputStream);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
-       this.explodingEntityID.encodeToBinaryDIS(outputStream);
-       this.eventID.encodeToBinaryDIS(outputStream);
-       this.velocity.encodeToBinaryDIS(outputStream);
-       this.locationInWorldCoordinates.encodeToBinaryDIS(outputStream);
-       this.descriptor.encodeToBinaryDIS(outputStream);
-       this.locationOfEntityCoordinates.encodeToBinaryDIS(outputStream);
+       this.firingEntityID.encodeToBinary(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
+       this.explodingEntityID.encodeToBinary(outputStream);
+       this.eventID.encodeToBinary(outputStream);
+       this.velocity.encodeToBinary(outputStream);
+       this.locationInWorldCoordinates.encodeToBinary(outputStream);
+       this.descriptor.encodeToBinary(outputStream);
+       this.locationOfEntityCoordinates.encodeToBinary(outputStream);
        outputStream.writeUByte(this.detonationResult);
        outputStream.writeUByte(this.numberOfVariableParameters);
        outputStream.writeUShort(this.pad);
        for(var idx = 0; idx < this.variableParameters.length; idx++)
        {
-           variableParameters[idx].encodeToBinaryDIS(outputStream);
+           variableParameters[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -4888,12 +4975,12 @@ exports.DetonationPdu = dis.DetonationPdu;
 /**
  * DE Precision Aimpoint Record. NOT COMPLETE. Section 6.2.20.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -4922,53 +5009,31 @@ dis.DirectedEnergyAreaAimpoint = function()
    this.directedEnergyTargetEnergyDepositionRecordCount = 0;
 
    /** list of beam antenna records. See 6.2.9.2 */
-    this.beamAntennaParameterList = new Array();
- 
-   /** list of DE target deposition records. See 6.2.21.4 */
-    this.directedEnergyTargetEnergyDepositionRecordList = new Array();
- 
-  dis.DirectedEnergyAreaAimpoint.prototype.initFromBinaryDIS = function(inputStream)
-  {
+   this.beamAntennaParameterList = new dis.BeamAntennaPattern(); 
 
-       this.recordType = inputStream.readInt();
+   /** list of DE target deposition records. See 6.2.21.4 */
+   this.directedEnergyTargetEnergyDepositionRecordList = new dis.DirectedEnergyTargetEnergyDeposition(); 
+
+  dis.DirectedEnergyAreaAimpoint.prototype.initFromBinary = function(inputStream)
+  {
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.padding = inputStream.readUShort();
        this.beamAntennaPatternRecordCount = inputStream.readUShort();
        this.directedEnergyTargetEnergyDepositionRecordCount = inputStream.readUShort();
-       for(var idx = 0; idx < this.beamAntennaPatternRecordCount; idx++)
-       {
-           var anX = new dis.BeamAntennaPattern();
-           anX.initFromBinaryDIS(inputStream);
-           this.beamAntennaParameterList.push(anX);
-       }
-
-       for(var idx = 0; idx < this.directedEnergyTargetEnergyDepositionRecordCount; idx++)
-       {
-           var anX = new dis.DirectedEnergyTargetEnergyDeposition();
-           anX.initFromBinaryDIS(inputStream);
-           this.directedEnergyTargetEnergyDepositionRecordList.push(anX);
-       }
-
+       this.beamAntennaParameterList.initFromBinary(inputStream);
+       this.directedEnergyTargetEnergyDepositionRecordList.initFromBinary(inputStream);
   };
 
-  dis.DirectedEnergyAreaAimpoint.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DirectedEnergyAreaAimpoint.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUShort(this.padding);
        outputStream.writeUShort(this.beamAntennaPatternRecordCount);
        outputStream.writeUShort(this.directedEnergyTargetEnergyDepositionRecordCount);
-       for(var idx = 0; idx < this.beamAntennaParameterList.length; idx++)
-       {
-           beamAntennaParameterList[idx].encodeToBinaryDIS(outputStream);
-       }
-
-       for(var idx = 0; idx < this.directedEnergyTargetEnergyDepositionRecordList.length; idx++)
-       {
-           directedEnergyTargetEnergyDepositionRecordList[idx].encodeToBinaryDIS(outputStream);
-       }
-
+       this.beamAntennaParameterList.encodeToBinary(outputStream);
+       this.directedEnergyTargetEnergyDepositionRecordList.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -4980,12 +5045,12 @@ exports.DirectedEnergyAreaAimpoint = dis.DirectedEnergyAreaAimpoint;
 /**
  * Damage sustained by an entity due to directed energy. Location of the damage based on a relative x,y,z location from the center of the entity. Section 6.2.15.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5034,37 +5099,35 @@ dis.DirectedEnergyDamage = function()
    /** padding */
    this.padding2 = 0;
 
-  dis.DirectedEnergyDamage.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DirectedEnergyDamage.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.padding = inputStream.readUShort();
-       this.damageLocation.initFromBinaryDIS(inputStream);
+       this.damageLocation.initFromBinary(inputStream);
        this.damageDiameter = inputStream.readFloat32();
        this.temperature = inputStream.readFloat32();
        this.componentIdentification = inputStream.readUByte();
        this.componentDamageStatus = inputStream.readUByte();
        this.componentVisualDamageStatus = inputStream.readUByte();
        this.componentVisualSmokeColor = inputStream.readUByte();
-       this.fireEventID.initFromBinaryDIS(inputStream);
+       this.fireEventID.initFromBinary(inputStream);
        this.padding2 = inputStream.readUShort();
   };
 
-  dis.DirectedEnergyDamage.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DirectedEnergyDamage.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUShort(this.padding);
-       this.damageLocation.encodeToBinaryDIS(outputStream);
+       this.damageLocation.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.damageDiameter);
        outputStream.writeFloat32(this.temperature);
        outputStream.writeUByte(this.componentIdentification);
        outputStream.writeUByte(this.componentDamageStatus);
        outputStream.writeUByte(this.componentVisualDamageStatus);
        outputStream.writeUByte(this.componentVisualSmokeColor);
-       this.fireEventID.encodeToBinaryDIS(outputStream);
+       this.fireEventID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding2);
   };
 }; // end of class
@@ -5077,12 +5140,12 @@ exports.DirectedEnergyDamage = dis.DirectedEnergyDamage;
 /**
  * Firing of a directed energy weapon shall be communicated by issuing a Directed Energy Fire PDU Section 7.3.4  COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5173,23 +5236,22 @@ dis.DirectedEnergyFirePdu = function()
    /** Fields shall contain one or more DE records, records shall conform to the variable record format (Section6.2.82), Section 7.3.4 */
     this.dERecords = new Array();
  
-  dis.DirectedEnergyFirePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DirectedEnergyFirePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.firingEntityID.initFromBinaryDIS(inputStream);
-       this.targetEntityID.initFromBinaryDIS(inputStream);
-       this.munitionType.initFromBinaryDIS(inputStream);
-       this.shotStartTime.initFromBinaryDIS(inputStream);
+       this.firingEntityID.initFromBinary(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
+       this.munitionType.initFromBinary(inputStream);
+       this.shotStartTime.initFromBinary(inputStream);
        this.commulativeShotTime = inputStream.readFloat32();
-       this.ApertureEmitterLocation.initFromBinaryDIS(inputStream);
+       this.ApertureEmitterLocation.initFromBinary(inputStream);
        this.apertureDiameter = inputStream.readFloat32();
        this.wavelength = inputStream.readFloat32();
        this.peakIrradiance = inputStream.readFloat32();
@@ -5198,21 +5260,20 @@ dis.DirectedEnergyFirePdu = function()
        this.flags = inputStream.readInt();
        this.pulseShape = inputStream.readByte();
        this.padding1 = inputStream.readUByte();
-       this.padding2 = inputStream.readInt();
+       this.padding2 = inputStream.readUInt();
        this.padding3 = inputStream.readUShort();
        this.numberOfDERecords = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfDERecords; idx++)
        {
            var anX = new dis.StandardVariableSpecification();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.dERecords.push(anX);
        }
 
   };
 
-  dis.DirectedEnergyFirePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DirectedEnergyFirePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -5221,12 +5282,12 @@ dis.DirectedEnergyFirePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.firingEntityID.encodeToBinaryDIS(outputStream);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
-       this.munitionType.encodeToBinaryDIS(outputStream);
-       this.shotStartTime.encodeToBinaryDIS(outputStream);
+       this.firingEntityID.encodeToBinary(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
+       this.munitionType.encodeToBinary(outputStream);
+       this.shotStartTime.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.commulativeShotTime);
-       this.ApertureEmitterLocation.encodeToBinaryDIS(outputStream);
+       this.ApertureEmitterLocation.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.apertureDiameter);
        outputStream.writeFloat32(this.wavelength);
        outputStream.writeFloat32(this.peakIrradiance);
@@ -5240,7 +5301,7 @@ dis.DirectedEnergyFirePdu = function()
        outputStream.writeUShort(this.numberOfDERecords);
        for(var idx = 0; idx < this.dERecords.length; idx++)
        {
-           dERecords[idx].encodeToBinaryDIS(outputStream);
+           dERecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -5254,12 +5315,12 @@ exports.DirectedEnergyFirePdu = dis.DirectedEnergyFirePdu;
 /**
  * DE Precision Aimpoint Record. Section 6.2.20.3
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5317,37 +5378,35 @@ dis.DirectedEnergyPrecisionAimpoint = function()
    /** padding */
    this.padding2 = 0;
 
-  dis.DirectedEnergyPrecisionAimpoint.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DirectedEnergyPrecisionAimpoint.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.padding = inputStream.readUShort();
-       this.targetSpotLocation.initFromBinaryDIS(inputStream);
-       this.targetSpotEntityLocation.initFromBinaryDIS(inputStream);
-       this.targetSpotVelocity.initFromBinaryDIS(inputStream);
-       this.targetSpotAcceleration.initFromBinaryDIS(inputStream);
-       this.targetEntityID.initFromBinaryDIS(inputStream);
+       this.targetSpotLocation.initFromBinary(inputStream);
+       this.targetSpotEntityLocation.initFromBinary(inputStream);
+       this.targetSpotVelocity.initFromBinary(inputStream);
+       this.targetSpotAcceleration.initFromBinary(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
        this.targetComponentID = inputStream.readUByte();
        this.beamSpotType = inputStream.readUByte();
        this.beamSpotCrossSectionSemiMajorAxis = inputStream.readFloat32();
        this.beamSpotCrossSectionSemiMinorAxis = inputStream.readFloat32();
        this.beamSpotCrossSectionOrientationAngle = inputStream.readFloat32();
        this.peakIrradiance = inputStream.readFloat32();
-       this.padding2 = inputStream.readInt();
+       this.padding2 = inputStream.readUInt();
   };
 
-  dis.DirectedEnergyPrecisionAimpoint.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DirectedEnergyPrecisionAimpoint.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUShort(this.padding);
-       this.targetSpotLocation.encodeToBinaryDIS(outputStream);
-       this.targetSpotEntityLocation.encodeToBinaryDIS(outputStream);
-       this.targetSpotVelocity.encodeToBinaryDIS(outputStream);
-       this.targetSpotAcceleration.encodeToBinaryDIS(outputStream);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
+       this.targetSpotLocation.encodeToBinary(outputStream);
+       this.targetSpotEntityLocation.encodeToBinary(outputStream);
+       this.targetSpotVelocity.encodeToBinary(outputStream);
+       this.targetSpotAcceleration.encodeToBinary(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.targetComponentID);
        outputStream.writeUByte(this.beamSpotType);
        outputStream.writeFloat32(this.beamSpotCrossSectionSemiMajorAxis);
@@ -5366,12 +5425,12 @@ exports.DirectedEnergyPrecisionAimpoint = dis.DirectedEnergyPrecisionAimpoint;
 /**
  * DE energy depostion properties for a target entity. Section 6.2.20.4
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5393,18 +5452,16 @@ dis.DirectedEnergyTargetEnergyDeposition = function()
    /** Peak irrandiance */
    this.peakIrradiance = 0;
 
-  dis.DirectedEnergyTargetEnergyDeposition.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DirectedEnergyTargetEnergyDeposition.prototype.initFromBinary = function(inputStream)
   {
-
-       this.targetEntityID.initFromBinaryDIS(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
        this.padding = inputStream.readUShort();
        this.peakIrradiance = inputStream.readFloat32();
   };
 
-  dis.DirectedEnergyTargetEnergyDeposition.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DirectedEnergyTargetEnergyDeposition.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding);
        outputStream.writeFloat32(this.peakIrradiance);
   };
@@ -5418,12 +5475,12 @@ exports.DirectedEnergyTargetEnergyDeposition = dis.DirectedEnergyTargetEnergyDep
 /**
  * Section 5.3.7. Electronic Emissions. Abstract superclass for distirubted emissions PDU
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5460,22 +5517,20 @@ dis.DistributedEmissionsFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.DistributedEmissionsFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.DistributedEmissionsFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.DistributedEmissionsFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.DistributedEmissionsFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -5495,12 +5550,12 @@ exports.DistributedEmissionsFamilyPdu = dis.DistributedEmissionsFamilyPdu;
 /**
  * Contains electromagnetic emmission regeneration parameters that are variable throught a scenario. Section 6.2.22.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5528,9 +5583,8 @@ dis.EEFundamentalParameterData = function()
    /** Average pulse width  of the emission in microseconds. */
    this.pulseWidth = 0;
 
-  dis.EEFundamentalParameterData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EEFundamentalParameterData.prototype.initFromBinary = function(inputStream)
   {
-
        this.frequency = inputStream.readFloat32();
        this.frequencyRange = inputStream.readFloat32();
        this.effectiveRadiatedPower = inputStream.readFloat32();
@@ -5538,9 +5592,8 @@ dis.EEFundamentalParameterData = function()
        this.pulseWidth = inputStream.readFloat32();
   };
 
-  dis.EEFundamentalParameterData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EEFundamentalParameterData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.frequency);
        outputStream.writeFloat32(this.frequencyRange);
        outputStream.writeFloat32(this.effectiveRadiatedPower);
@@ -5557,12 +5610,12 @@ exports.EEFundamentalParameterData = dis.EEFundamentalParameterData;
 /**
  * 64 bit piece of data
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5578,18 +5631,16 @@ dis.EightByteChunk = function()
    /** Eight bytes of arbitrary data */
    this.otherParameters = new Array(0, 0, 0, 0, 0, 0, 0, 0);
 
-  dis.EightByteChunk.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EightByteChunk.prototype.initFromBinary = function(inputStream)
   {
-
        for(var idx = 0; idx < 8; idx++)
        {
           this.otherParameters[ idx ] = inputStream.readByte();
        }
   };
 
-  dis.EightByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EightByteChunk.prototype.encodeToBinary = function(outputStream)
   {
-
        for(var idx = 0; idx < 8; idx++)
        {
           outputStream.writeByte(this.otherParameters[ idx ] );
@@ -5605,12 +5656,12 @@ exports.EightByteChunk = dis.EightByteChunk;
 /**
  * Section 5.3.7.1. Information about active electronic warfare (EW) emissions and active EW countermeasures shall be communicated using an Electromagnetic Emission PDU. NOT COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5677,38 +5728,36 @@ dis.ElectronicEmissionsPdu = function()
    /** Electronic emmissions systems THIS IS WRONG. It has the WRONG class type and will cause problems in any marshalling. */
     this.systems = new Array();
  
-  dis.ElectronicEmissionsPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ElectronicEmissionsPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.emittingEntityID.initFromBinaryDIS(inputStream);
-       this.eventID.initFromBinaryDIS(inputStream);
+       this.emittingEntityID.initFromBinary(inputStream);
+       this.eventID.initFromBinary(inputStream);
        this.stateUpdateIndicator = inputStream.readUByte();
        this.numberOfSystems = inputStream.readUByte();
        this.paddingForEmissionsPdu = inputStream.readUShort();
        this.systemDataLength = inputStream.readUByte();
        this.numberOfBeams = inputStream.readUByte();
-       this.emitterSystem.initFromBinaryDIS(inputStream);
-       this.location.initFromBinaryDIS(inputStream);
+       this.emitterSystem.initFromBinary(inputStream);
+       this.location.initFromBinary(inputStream);
        for(var idx = 0; idx < this.numberOfSystems; idx++)
        {
            var anX = new dis.Vector3Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.systems.push(anX);
        }
 
   };
 
-  dis.ElectronicEmissionsPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ElectronicEmissionsPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -5717,18 +5766,18 @@ dis.ElectronicEmissionsPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.emittingEntityID.encodeToBinaryDIS(outputStream);
-       this.eventID.encodeToBinaryDIS(outputStream);
+       this.emittingEntityID.encodeToBinary(outputStream);
+       this.eventID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.stateUpdateIndicator);
        outputStream.writeUByte(this.numberOfSystems);
        outputStream.writeUShort(this.paddingForEmissionsPdu);
        outputStream.writeUByte(this.systemDataLength);
        outputStream.writeUByte(this.numberOfBeams);
-       this.emitterSystem.encodeToBinaryDIS(outputStream);
-       this.location.encodeToBinaryDIS(outputStream);
+       this.emitterSystem.encodeToBinary(outputStream);
+       this.location.encodeToBinary(outputStream);
        for(var idx = 0; idx < this.systems.length; idx++)
        {
-           systems[idx].encodeToBinaryDIS(outputStream);
+           systems[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -5742,12 +5791,12 @@ exports.ElectronicEmissionsPdu = dis.ElectronicEmissionsPdu;
 /**
  * This field shall specify information about a particular emitter system. Section 6.2.23.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5769,17 +5818,15 @@ dis.EmitterSystem = function()
    /** emitter ID, 8 bit enumeration */
    this.emitterIDNumber = 0;
 
-  dis.EmitterSystem.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EmitterSystem.prototype.initFromBinary = function(inputStream)
   {
-
        this.emitterName = inputStream.readUShort();
        this.emitterFunction = inputStream.readUByte();
        this.emitterIDNumber = inputStream.readUByte();
   };
 
-  dis.EmitterSystem.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EmitterSystem.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.emitterName);
        outputStream.writeUByte(this.emitterFunction);
        outputStream.writeUByte(this.emitterIDNumber);
@@ -5794,12 +5841,12 @@ exports.EmitterSystem = dis.EmitterSystem;
 /**
  * Information about an entity's engine fuel. Section 6.2.24.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5827,19 +5874,17 @@ dis.EngineFuel = function()
    /** padding */
    this.padding = 0;
 
-  dis.EngineFuel.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EngineFuel.prototype.initFromBinary = function(inputStream)
   {
-
-       this.fuelQuantity = inputStream.readInt();
+       this.fuelQuantity = inputStream.readUInt();
        this.fuelMeasurementUnits = inputStream.readUByte();
        this.fuelType = inputStream.readUByte();
        this.fuelLocation = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.EngineFuel.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EngineFuel.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.fuelQuantity);
        outputStream.writeUByte(this.fuelMeasurementUnits);
        outputStream.writeUByte(this.fuelType);
@@ -5856,12 +5901,12 @@ exports.EngineFuel = dis.EngineFuel;
 /**
  * For each type or location of engine fuell, this record specifies the type, location, fuel measurement units, and reload quantity and maximum quantity. Section 6.2.25.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5895,21 +5940,19 @@ dis.EngineFuelReload = function()
    /** padding */
    this.padding = 0;
 
-  dis.EngineFuelReload.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EngineFuelReload.prototype.initFromBinary = function(inputStream)
   {
-
-       this.standardQuantity = inputStream.readInt();
-       this.maximumQuantity = inputStream.readInt();
-       this.standardQuantityReloadTime = inputStream.readInt();
-       this.maximumQuantityReloadTime = inputStream.readInt();
+       this.standardQuantity = inputStream.readUInt();
+       this.maximumQuantity = inputStream.readUInt();
+       this.standardQuantityReloadTime = inputStream.readUInt();
+       this.maximumQuantityReloadTime = inputStream.readUInt();
        this.fuelMeasurmentUnits = inputStream.readUByte();
        this.fuelLocation = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.EngineFuelReload.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EngineFuelReload.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.standardQuantity);
        outputStream.writeUInt(this.maximumQuantity);
        outputStream.writeUInt(this.standardQuantityReloadTime);
@@ -5928,12 +5971,12 @@ exports.EngineFuelReload = dis.EngineFuelReload;
 /**
  * Association or disassociation of two entities.  Section 6.2.94.4.3
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -5973,28 +6016,26 @@ dis.EntityAssociation = function()
    /** Group if any to which the entity belongs */
    this.groupNumber = 0;
 
-  dis.EntityAssociation.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityAssociation.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUByte();
        this.changeIndicator = inputStream.readUByte();
        this.associationStatus = inputStream.readUByte();
        this.associationType = inputStream.readUByte();
-       this.entityID.initFromBinaryDIS(inputStream);
+       this.entityID.initFromBinary(inputStream);
        this.ownStationLocation = inputStream.readUShort();
        this.physicalConnectionType = inputStream.readUByte();
        this.groupMemberType = inputStream.readUByte();
        this.groupNumber = inputStream.readUShort();
   };
 
-  dis.EntityAssociation.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityAssociation.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.recordType);
        outputStream.writeUByte(this.changeIndicator);
        outputStream.writeUByte(this.associationStatus);
        outputStream.writeUByte(this.associationType);
-       this.entityID.encodeToBinaryDIS(outputStream);
+       this.entityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.ownStationLocation);
        outputStream.writeUByte(this.physicalConnectionType);
        outputStream.writeUByte(this.groupMemberType);
@@ -6010,12 +6051,12 @@ exports.EntityAssociation = dis.EntityAssociation;
 /**
  * shall be used to communicate detailed damage information sustained by an entity regardless of the source of the damage Section 7.3.5  COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6073,35 +6114,33 @@ dis.EntityDamageStatusPdu = function()
    /** Fields shall contain one or more Damage Description records (see 6.2.17) and may contain other Standard Variable records, Section 7.3.5 */
     this.damageDescriptionRecords = new Array();
  
-  dis.EntityDamageStatusPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityDamageStatusPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.firingEntityID.initFromBinaryDIS(inputStream);
-       this.targetEntityID.initFromBinaryDIS(inputStream);
-       this.damagedEntityID.initFromBinaryDIS(inputStream);
+       this.firingEntityID.initFromBinary(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
+       this.damagedEntityID.initFromBinary(inputStream);
        this.padding1 = inputStream.readUShort();
        this.padding2 = inputStream.readUShort();
        this.numberOfDamageDescription = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfDamageDescription; idx++)
        {
            var anX = new dis.DirectedEnergyDamage();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.damageDescriptionRecords.push(anX);
        }
 
   };
 
-  dis.EntityDamageStatusPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityDamageStatusPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -6110,15 +6149,15 @@ dis.EntityDamageStatusPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.firingEntityID.encodeToBinaryDIS(outputStream);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
-       this.damagedEntityID.encodeToBinaryDIS(outputStream);
+       this.firingEntityID.encodeToBinary(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
+       this.damagedEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding1);
        outputStream.writeUShort(this.padding2);
        outputStream.writeUShort(this.numberOfDamageDescription);
        for(var idx = 0; idx < this.damageDescriptionRecords.length; idx++)
        {
-           damageDescriptionRecords[idx].encodeToBinaryDIS(outputStream);
+           damageDescriptionRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -6132,12 +6171,12 @@ exports.EntityDamageStatusPdu = dis.EntityDamageStatusPdu;
 /**
  * more laconically named EntityIdentifier
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6159,17 +6198,15 @@ dis.EntityID = function()
    /** Entity number ID */
    this.entityID = 0;
 
-  dis.EntityID.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityID.prototype.initFromBinary = function(inputStream)
   {
-
        this.siteID = inputStream.readUShort();
        this.applicationID = inputStream.readUShort();
        this.entityID = inputStream.readUShort();
   };
 
-  dis.EntityID.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityID.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.siteID);
        outputStream.writeUShort(this.applicationID);
        outputStream.writeUShort(this.entityID);
@@ -6184,12 +6221,12 @@ exports.EntityID = dis.EntityID;
 /**
  * Entity Identifier. Unique ID for entities in the world. Consists of an simulation address and a entity number. Section 6.2.28.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6208,17 +6245,15 @@ dis.EntityIdentifier = function()
    /** Entity number */
    this.entityNumber = 0;
 
-  dis.EntityIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.entityNumber = inputStream.readUShort();
   };
 
-  dis.EntityIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.entityNumber);
   };
 }; // end of class
@@ -6231,12 +6266,12 @@ exports.EntityIdentifier = dis.EntityIdentifier;
 /**
  * Section 5.3.3. Common superclass for EntityState, Collision, collision-elastic, and entity state update PDUs. This should be abstract. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6273,22 +6308,20 @@ dis.EntityInformationFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.EntityInformationFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityInformationFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.EntityInformationFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityInformationFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -6308,12 +6341,12 @@ exports.EntityInformationFamilyPdu = dis.EntityInformationFamilyPdu;
 /**
  *  Managment of grouping of PDUs, and more. Section 7.8
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6350,22 +6383,20 @@ dis.EntityManagementFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.EntityManagementFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityManagementFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.EntityManagementFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityManagementFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -6385,12 +6416,12 @@ exports.EntityManagementFamilyPdu = dis.EntityManagementFamilyPdu;
 /**
  * Specifies the character set used inthe first byte, followed by 11 characters of text data. Section 6.29
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6407,73 +6438,66 @@ dis.EntityMarking = function()
    this.characterSet = 0;
 
    /** The characters */
-   this.characters = new Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+   this.characters = 0;
 
-  dis.EntityMarking.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityMarking.prototype.initFromBinary = function(inputStream)
   {
-
        this.characterSet = inputStream.readUByte();
-       for(var idx = 0; idx < 11; idx++)
-       {
-          this.characters[ idx ] = inputStream.readByte();
-       }
+       this.characters = inputStream.readByte();
   };
 
-  dis.EntityMarking.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityMarking.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.characterSet);
-       for(var idx = 0; idx < 11; idx++)
-       {
-          outputStream.writeByte(this.characters[ idx ] );
-       }
+       outputStream.writeByte(this.characters);
   };
-  
+
   /*
-   * Returns the byte array marking, in string format. 
+   * Returns the byte array marking, in string format.
    * @return string format marking characters
    */
-  dis.Marking.prototype.getMarking = function()
+  dis.EntityMarking.prototype.getMarking = function()
   {
       var marking = "";
       for(var idx = 0; idx < 11; idx++)
       {
           marking = marking + String.fromCharCode(this.characters[idx]);
       }
-      
+
       return marking;
   };
-  
-  /**
+
+/**
    * Given a string format marking, sets the bytes of the marking object
    * to the appropriate character values. Clamps the string to no more
    * than 11 characters.
-   * 
+   *
    * @param {String} newMarking string format marking
    * @returns {nothing}
    */
-  dis.Marking.prototype.setMarking = function(newMarking)
+  dis.EntityMarking.prototype.setMarking = function(newMarking)
   {
       var stringLen = newMarking.length;
       if(stringLen > 11)
           stringLen = 11;
-      
+
       // Copy over up to 11 characters from the string to the array
       var charsCopied = 0;
       while(charsCopied < stringLen)
-      {          
+      {
           this.characters[charsCopied] = newMarking.charCodeAt( charsCopied );
           charsCopied++;
       }
-      
+
       // Zero-fill the remainer of the character array
       while(charsCopied < 11)
       {
           this.characters[ charsCopied ] = 0;
           charsCopied++;
       }
-      
+
   };
+
 }; // end of class
 
  // node.js module support
@@ -6484,12 +6508,12 @@ exports.EntityMarking = dis.EntityMarking;
 /**
  * Represents the postion and state of one entity in the world. Section 7.2.2. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6530,7 +6554,7 @@ dis.EntityStatePdu = function()
    this.entityID = new dis.EntityID(); 
 
    /** What force this entity is affiliated with, eg red, blue, neutral, etc */
-   this.forceID = 0;
+   this.forceId = 0;
 
    /** How many variable parameters are in the variable length list. In earlier versions of DIS these were known as articulation parameters */
    this.numberOfVariableParameters = 0;
@@ -6564,41 +6588,39 @@ dis.EntityStatePdu = function()
    /** variable length list of variable parameters. In earlier DIS versions this was articulation parameters. */
     this.variableParameters = new Array();
  
-  dis.EntityStatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityStatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.entityID.initFromBinaryDIS(inputStream);
-       this.forceID = inputStream.readUByte();
+       this.entityID.initFromBinary(inputStream);
+       this.forceId = inputStream.readUByte();
        this.numberOfVariableParameters = inputStream.readUByte();
-       this.entityType.initFromBinaryDIS(inputStream);
-       this.alternativeEntityType.initFromBinaryDIS(inputStream);
-       this.entityLinearVelocity.initFromBinaryDIS(inputStream);
-       this.entityLocation.initFromBinaryDIS(inputStream);
-       this.entityOrientation.initFromBinaryDIS(inputStream);
-       this.entityAppearance = inputStream.readInt();
-       this.deadReckoningParameters.initFromBinaryDIS(inputStream);
-       this.marking.initFromBinaryDIS(inputStream);
-       this.capabilities = inputStream.readInt();
+       this.entityType.initFromBinary(inputStream);
+       this.alternativeEntityType.initFromBinary(inputStream);
+       this.entityLinearVelocity.initFromBinary(inputStream);
+       this.entityLocation.initFromBinary(inputStream);
+       this.entityOrientation.initFromBinary(inputStream);
+       this.entityAppearance = inputStream.readUInt();
+       this.deadReckoningParameters.initFromBinary(inputStream);
+       this.marking.initFromBinary(inputStream);
+       this.capabilities = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfVariableParameters; idx++)
        {
            var anX = new dis.VariableParameter();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableParameters.push(anX);
        }
 
   };
 
-  dis.EntityStatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityStatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -6607,24 +6629,245 @@ dis.EntityStatePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.entityID.encodeToBinaryDIS(outputStream);
-       outputStream.writeUByte(this.forceID);
+       this.entityID.encodeToBinary(outputStream);
+       outputStream.writeUByte(this.forceId);
        outputStream.writeUByte(this.numberOfVariableParameters);
-       this.entityType.encodeToBinaryDIS(outputStream);
-       this.alternativeEntityType.encodeToBinaryDIS(outputStream);
-       this.entityLinearVelocity.encodeToBinaryDIS(outputStream);
-       this.entityLocation.encodeToBinaryDIS(outputStream);
-       this.entityOrientation.encodeToBinaryDIS(outputStream);
+       this.entityType.encodeToBinary(outputStream);
+       this.alternativeEntityType.encodeToBinary(outputStream);
+       this.entityLinearVelocity.encodeToBinary(outputStream);
+       this.entityLocation.encodeToBinary(outputStream);
+       this.entityOrientation.encodeToBinary(outputStream);
        outputStream.writeUInt(this.entityAppearance);
-       this.deadReckoningParameters.encodeToBinaryDIS(outputStream);
-       this.marking.encodeToBinaryDIS(outputStream);
+       this.deadReckoningParameters.encodeToBinary(outputStream);
+       this.marking.encodeToBinary(outputStream);
        outputStream.writeUInt(this.capabilities);
        for(var idx = 0; idx < this.variableParameters.length; idx++)
        {
-           variableParameters[idx].encodeToBinaryDIS(outputStream);
+           variableParameters[idx].encodeToBinary(outputStream);
        }
 
   };
+
+/** 0 uniform color, 1 camouflage */
+dis.EntityStatePdu.prototype.getEntityAppearance_paintScheme = function()
+{
+   var val = this.entityAppearance & 0x1;
+   return val >> 0;
+};
+
+
+/** 0 uniform color, 1 camouflage */
+dis.EntityStatePdu.prototype.setEntityAppearance_paintScheme= function(val)
+{
+  this.entityAppearance &= ~0x1; // Zero existing bits
+  val = val << 0;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 no mobility kill, 1 mobility kill */
+dis.EntityStatePdu.prototype.getEntityAppearance_mobility = function()
+{
+   var val = this.entityAppearance & 0x2;
+   return val >> 1;
+};
+
+
+/** 0 no mobility kill, 1 mobility kill */
+dis.EntityStatePdu.prototype.setEntityAppearance_mobility= function(val)
+{
+  this.entityAppearance &= ~0x2; // Zero existing bits
+  val = val << 1;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 no firepower iill, 1 firepower kill */
+dis.EntityStatePdu.prototype.getEntityAppearance_firepower = function()
+{
+   var val = this.entityAppearance & 0x4;
+   return val >> 2;
+};
+
+
+/** 0 no firepower iill, 1 firepower kill */
+dis.EntityStatePdu.prototype.setEntityAppearance_firepower= function(val)
+{
+  this.entityAppearance &= ~0x4; // Zero existing bits
+  val = val << 2;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 no damage, 1 slight damage, 2 moderate, 3 destroyed */
+dis.EntityStatePdu.prototype.getEntityAppearance_damage = function()
+{
+   var val = this.entityAppearance & 0x18;
+   return val >> 3;
+};
+
+
+/** 0 no damage, 1 slight damage, 2 moderate, 3 destroyed */
+dis.EntityStatePdu.prototype.setEntityAppearance_damage= function(val)
+{
+  this.entityAppearance &= ~0x18; // Zero existing bits
+  val = val << 3;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 no smoke, 1 smoke plume, 2 engine smoke, 3 engine smoke and plume */
+dis.EntityStatePdu.prototype.getEntityAppearance_smoke = function()
+{
+   var val = this.entityAppearance & 0x60;
+   return val >> 5;
+};
+
+
+/** 0 no smoke, 1 smoke plume, 2 engine smoke, 3 engine smoke and plume */
+dis.EntityStatePdu.prototype.setEntityAppearance_smoke= function(val)
+{
+  this.entityAppearance &= ~0x60; // Zero existing bits
+  val = val << 5;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** dust cloud, 0 none 1 small 2 medium 3 large */
+dis.EntityStatePdu.prototype.getEntityAppearance_trailingEffects = function()
+{
+   var val = this.entityAppearance & 0x180;
+   return val >> 7;
+};
+
+
+/** dust cloud, 0 none 1 small 2 medium 3 large */
+dis.EntityStatePdu.prototype.setEntityAppearance_trailingEffects= function(val)
+{
+  this.entityAppearance &= ~0x180; // Zero existing bits
+  val = val << 7;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 NA 1 closed popped 3 popped and person visible  4 open 5 open and person visible */
+dis.EntityStatePdu.prototype.getEntityAppearance_hatch = function()
+{
+   var val = this.entityAppearance & 0xe00;
+   return val >> 9;
+};
+
+
+/** 0 NA 1 closed popped 3 popped and person visible  4 open 5 open and person visible */
+dis.EntityStatePdu.prototype.setEntityAppearance_hatch= function(val)
+{
+  this.entityAppearance &= ~0xe00; // Zero existing bits
+  val = val << 9;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.getEntityAppearance_headlights = function()
+{
+   var val = this.entityAppearance & 0x1000;
+   return val >> 12;
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.setEntityAppearance_headlights= function(val)
+{
+  this.entityAppearance &= ~0x1000; // Zero existing bits
+  val = val << 12;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.getEntityAppearance_tailLights = function()
+{
+   var val = this.entityAppearance & 0x2000;
+   return val >> 13;
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.setEntityAppearance_tailLights= function(val)
+{
+  this.entityAppearance &= ~0x2000; // Zero existing bits
+  val = val << 13;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.getEntityAppearance_brakeLights = function()
+{
+   var val = this.entityAppearance & 0x4000;
+   return val >> 14;
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.setEntityAppearance_brakeLights= function(val)
+{
+  this.entityAppearance &= ~0x4000; // Zero existing bits
+  val = val << 14;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.getEntityAppearance_flaming = function()
+{
+   var val = this.entityAppearance & 0x8000;
+   return val >> 15;
+};
+
+
+/** 0 off 1 on */
+dis.EntityStatePdu.prototype.setEntityAppearance_flaming= function(val)
+{
+  this.entityAppearance &= ~0x8000; // Zero existing bits
+  val = val << 15;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 not raised 1 raised */
+dis.EntityStatePdu.prototype.getEntityAppearance_launcher = function()
+{
+   var val = this.entityAppearance & 0x10000;
+   return val >> 16;
+};
+
+
+/** 0 not raised 1 raised */
+dis.EntityStatePdu.prototype.setEntityAppearance_launcher= function(val)
+{
+  this.entityAppearance &= ~0x10000; // Zero existing bits
+  val = val << 16;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
+
+/** 0 desert 1 winter 2 forest 3 unused */
+dis.EntityStatePdu.prototype.getEntityAppearance_camouflageType = function()
+{
+   var val = this.entityAppearance & 0x60000;
+   return val >> 17;
+};
+
+
+/** 0 desert 1 winter 2 forest 3 unused */
+dis.EntityStatePdu.prototype.setEntityAppearance_camouflageType= function(val)
+{
+  this.entityAppearance &= ~0x60000; // Zero existing bits
+  val = val << 17;
+  this.entityAppearance = this.entityAppearance | val; 
+};
+
 }; // end of class
 
  // node.js module support
@@ -6635,12 +6878,12 @@ exports.EntityStatePdu = dis.EntityStatePdu;
 /**
  * Nonstatic information about a particular entity may be communicated by issuing an Entity State Update PDU. Section 7.2.5. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6701,36 +6944,34 @@ dis.EntityStateUpdatePdu = function()
    /** This field shall specify the parameter values for each Variable Parameter record that is included (see 6.2.93 and Annex I). */
     this.variableParameters = new Array();
  
-  dis.EntityStateUpdatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityStateUpdatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.entityID.initFromBinaryDIS(inputStream);
+       this.entityID.initFromBinary(inputStream);
        this.padding1 = inputStream.readByte();
        this.numberOfVariableParameters = inputStream.readUByte();
-       this.entityLinearVelocity.initFromBinaryDIS(inputStream);
-       this.entityLocation.initFromBinaryDIS(inputStream);
-       this.entityOrientation.initFromBinaryDIS(inputStream);
-       this.entityAppearance = inputStream.readInt();
+       this.entityLinearVelocity.initFromBinary(inputStream);
+       this.entityLocation.initFromBinary(inputStream);
+       this.entityOrientation.initFromBinary(inputStream);
+       this.entityAppearance = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfVariableParameters; idx++)
        {
            var anX = new dis.VariableParameter();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableParameters.push(anX);
        }
 
   };
 
-  dis.EntityStateUpdatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityStateUpdatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -6739,16 +6980,16 @@ dis.EntityStateUpdatePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.entityID.encodeToBinaryDIS(outputStream);
+       this.entityID.encodeToBinary(outputStream);
        outputStream.writeByte(this.padding1);
        outputStream.writeUByte(this.numberOfVariableParameters);
-       this.entityLinearVelocity.encodeToBinaryDIS(outputStream);
-       this.entityLocation.encodeToBinaryDIS(outputStream);
-       this.entityOrientation.encodeToBinaryDIS(outputStream);
+       this.entityLinearVelocity.encodeToBinary(outputStream);
+       this.entityLocation.encodeToBinary(outputStream);
+       this.entityOrientation.encodeToBinary(outputStream);
        outputStream.writeUInt(this.entityAppearance);
        for(var idx = 0; idx < this.variableParameters.length; idx++)
        {
-           variableParameters[idx].encodeToBinaryDIS(outputStream);
+           variableParameters[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -6762,12 +7003,12 @@ exports.EntityStateUpdatePdu = dis.EntityStateUpdatePdu;
 /**
  * Identifies the type of Entity
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6800,9 +7041,8 @@ dis.EntityType = function()
 
    this.extra = 0;
 
-  dis.EntityType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityType.prototype.initFromBinary = function(inputStream)
   {
-
        this.entityKind = inputStream.readUByte();
        this.domain = inputStream.readUByte();
        this.country = inputStream.readUShort();
@@ -6812,9 +7052,8 @@ dis.EntityType = function()
        this.extra = inputStream.readUByte();
   };
 
-  dis.EntityType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.entityKind);
        outputStream.writeUByte(this.domain);
        outputStream.writeUShort(this.country);
@@ -6833,12 +7072,12 @@ exports.EntityType = dis.EntityType;
 /**
  * Association or disassociation of two entities.  Section 6.2.94.5
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6866,22 +7105,20 @@ dis.EntityTypeVP = function()
    /** padding */
    this.padding1 = 0;
 
-  dis.EntityTypeVP.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EntityTypeVP.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUByte();
        this.changeIndicator = inputStream.readUByte();
-       this.entityType.initFromBinaryDIS(inputStream);
+       this.entityType.initFromBinary(inputStream);
        this.padding = inputStream.readUShort();
-       this.padding1 = inputStream.readInt();
+       this.padding1 = inputStream.readUInt();
   };
 
-  dis.EntityTypeVP.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EntityTypeVP.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.recordType);
        outputStream.writeUByte(this.changeIndicator);
-       this.entityType.encodeToBinaryDIS(outputStream);
+       this.entityType.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding);
        outputStream.writeUInt(this.padding1);
   };
@@ -6895,12 +7132,12 @@ exports.EntityTypeVP = dis.EntityTypeVP;
 /**
  * Incomplete environment record; requires hand coding to fix. Section 6.2.31.1
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6925,18 +7162,16 @@ dis.Environment = function()
    /** padding */
    this.padding = 0;
 
-  dis.Environment.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Environment.prototype.initFromBinary = function(inputStream)
   {
-
-       this.environmentType = inputStream.readInt();
+       this.environmentType = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.index = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.Environment.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Environment.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.environmentType);
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.index);
@@ -6952,12 +7187,12 @@ exports.Environment = dis.Environment;
 /**
  *  Information about a geometry, a state associated with a geometry, a bounding volume, or an associated entity ID. NOTE: this class requires hand coding. 6.2.31
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -6988,10 +7223,9 @@ dis.EnvironmentGeneral = function()
    /** padding to bring the total size up to a 64 bit boundry */
    this.padding2 = 0;
 
-  dis.EnvironmentGeneral.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EnvironmentGeneral.prototype.initFromBinary = function(inputStream)
   {
-
-       this.environmentType = inputStream.readInt();
+       this.environmentType = inputStream.readUInt();
        this.length = inputStream.readUByte();
        this.index = inputStream.readUByte();
        this.padding1 = inputStream.readUByte();
@@ -6999,9 +7233,8 @@ dis.EnvironmentGeneral = function()
        this.padding2 = inputStream.readUByte();
   };
 
-  dis.EnvironmentGeneral.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EnvironmentGeneral.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.environmentType);
        outputStream.writeUByte(this.length);
        outputStream.writeUByte(this.index);
@@ -7019,12 +7252,12 @@ exports.EnvironmentGeneral = dis.EnvironmentGeneral;
 /**
  * Description of environmental data in environmental process and gridded data PDUs. Section 6.2.32
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7057,9 +7290,8 @@ dis.EnvironmentType = function()
 
    this.extra = 0;
 
-  dis.EnvironmentType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EnvironmentType.prototype.initFromBinary = function(inputStream)
   {
-
        this.entityKind = inputStream.readUByte();
        this.domain = inputStream.readUByte();
        this.entityClass = inputStream.readUShort();
@@ -7069,9 +7301,8 @@ dis.EnvironmentType = function()
        this.extra = inputStream.readUByte();
   };
 
-  dis.EnvironmentType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EnvironmentType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.entityKind);
        outputStream.writeUByte(this.domain);
        outputStream.writeUShort(this.entityClass);
@@ -7090,12 +7321,12 @@ exports.EnvironmentType = dis.EnvironmentType;
 /**
  * Three floating point values representing an orientation, psi, theta, and phi, aka the euler angles, in radians. Section 6.2.33
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7114,17 +7345,15 @@ dis.EulerAngles = function()
 
    this.phi = 0;
 
-  dis.EulerAngles.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EulerAngles.prototype.initFromBinary = function(inputStream)
   {
-
        this.psi = inputStream.readFloat32();
        this.theta = inputStream.readFloat32();
        this.phi = inputStream.readFloat32();
   };
 
-  dis.EulerAngles.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EulerAngles.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.psi);
        outputStream.writeFloat32(this.theta);
        outputStream.writeFloat32(this.phi);
@@ -7139,12 +7368,12 @@ exports.EulerAngles = dis.EulerAngles;
 /**
  * Identifies an event in the world. Use this format for every PDU EXCEPT the LiveEntityPdu. Section 6.2.34.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7162,17 +7391,15 @@ dis.EventIdentifier = function()
 
    this.eventNumber = 0;
 
-  dis.EventIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EventIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.eventNumber = inputStream.readUShort();
   };
 
-  dis.EventIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EventIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.eventNumber);
   };
 }; // end of class
@@ -7185,12 +7412,12 @@ exports.EventIdentifier = dis.EventIdentifier;
 /**
  * Identifies an event in the world. Use this format for ONLY the LiveEntityPdu. Section 6.2.34.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7209,17 +7436,15 @@ dis.EventIdentifierLiveEntity = function()
 
    this.eventNumber = 0;
 
-  dis.EventIdentifierLiveEntity.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EventIdentifierLiveEntity.prototype.initFromBinary = function(inputStream)
   {
-
        this.siteNumber = inputStream.readUByte();
        this.applicationNumber = inputStream.readUByte();
        this.eventNumber = inputStream.readUShort();
   };
 
-  dis.EventIdentifierLiveEntity.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EventIdentifierLiveEntity.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.siteNumber);
        outputStream.writeUByte(this.applicationNumber);
        outputStream.writeUShort(this.eventNumber);
@@ -7234,12 +7459,12 @@ exports.EventIdentifierLiveEntity = dis.EventIdentifierLiveEntity;
 /**
  *  Reports occurance of a significant event to the simulation manager. Section 7.5.12. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7300,42 +7525,40 @@ dis.EventReportPdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.EventReportPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EventReportPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.eventType = inputStream.readInt();
-       this.padding1 = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.eventType = inputStream.readUInt();
+       this.padding1 = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.EventReportPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EventReportPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -7344,20 +7567,20 @@ dis.EventReportPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.eventType);
        outputStream.writeUInt(this.padding1);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -7371,12 +7594,12 @@ exports.EventReportPdu = dis.EventReportPdu;
 /**
  * Section 5.3.12.11: reports the occurance of a significatnt event to the simulation manager. Needs manual     intervention to fix padding in variable datums. UNFINISHED.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7437,42 +7660,40 @@ dis.EventReportReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.EventReportReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.EventReportReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.eventType = inputStream.readUShort();
-       this.pad1 = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.pad1 = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.EventReportReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.EventReportReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -7481,20 +7702,20 @@ dis.EventReportReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.eventType);
        outputStream.writeUInt(this.pad1);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -7508,12 +7729,12 @@ exports.EventReportReliablePdu = dis.EventReportReliablePdu;
 /**
  * An entity's expendable (chaff, flares, etc) information. Section 6.2.36
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7537,20 +7758,18 @@ dis.Expendable = function()
 
    this.padding = 0;
 
-  dis.Expendable.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Expendable.prototype.initFromBinary = function(inputStream)
   {
-
-       this.expendable.initFromBinaryDIS(inputStream);
-       this.station = inputStream.readInt();
+       this.expendable.initFromBinary(inputStream);
+       this.station = inputStream.readUInt();
        this.quantity = inputStream.readUShort();
        this.expendableStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.Expendable.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Expendable.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.expendable.encodeToBinaryDIS(outputStream);
+       this.expendable.encodeToBinary(outputStream);
        outputStream.writeUInt(this.station);
        outputStream.writeUShort(this.quantity);
        outputStream.writeUByte(this.expendableStatus);
@@ -7566,12 +7785,12 @@ exports.Expendable = dis.Expendable;
 /**
  * Burst of chaff or expendible device. Section 6.2.19.4
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7590,17 +7809,15 @@ dis.ExpendableDescriptor = function()
    /** Padding */
    this.padding = 0;
 
-  dis.ExpendableDescriptor.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ExpendableDescriptor.prototype.initFromBinary = function(inputStream)
   {
-
-       this.expendableType.initFromBinaryDIS(inputStream);
+       this.expendableType.initFromBinary(inputStream);
        this.padding = inputStream.readLong();
   };
 
-  dis.ExpendableDescriptor.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ExpendableDescriptor.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.expendableType.encodeToBinaryDIS(outputStream);
+       this.expendableType.encodeToBinary(outputStream);
        outputStream.writeLong(this.padding);
   };
 }; // end of class
@@ -7613,12 +7830,12 @@ exports.ExpendableDescriptor = dis.ExpendableDescriptor;
 /**
  * An entity's expendable (chaff, flares, etc) information. Section 6.2.37
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7644,21 +7861,19 @@ dis.ExpendableReload = function()
 
    this.maximumQuantityReloadTime = 0;
 
-  dis.ExpendableReload.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ExpendableReload.prototype.initFromBinary = function(inputStream)
   {
-
-       this.expendable.initFromBinaryDIS(inputStream);
-       this.station = inputStream.readInt();
+       this.expendable.initFromBinary(inputStream);
+       this.station = inputStream.readUInt();
        this.standardQuantity = inputStream.readUShort();
        this.maximumQuantity = inputStream.readUShort();
-       this.standardQuantityReloadTime = inputStream.readInt();
-       this.maximumQuantityReloadTime = inputStream.readInt();
+       this.standardQuantityReloadTime = inputStream.readUInt();
+       this.maximumQuantityReloadTime = inputStream.readUInt();
   };
 
-  dis.ExpendableReload.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ExpendableReload.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.expendable.encodeToBinaryDIS(outputStream);
+       this.expendable.encodeToBinary(outputStream);
        outputStream.writeUInt(this.station);
        outputStream.writeUShort(this.standardQuantity);
        outputStream.writeUShort(this.maximumQuantity);
@@ -7675,12 +7890,12 @@ exports.ExpendableReload = dis.ExpendableReload;
 /**
  * Explosion of a non-munition. Section 6.2.19.3
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7705,19 +7920,17 @@ dis.ExplosionDescriptor = function()
    /** Force of explosion, in equivalent KG of TNT */
    this.explosiveForce = 0;
 
-  dis.ExplosionDescriptor.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ExplosionDescriptor.prototype.initFromBinary = function(inputStream)
   {
-
-       this.explodingObject.initFromBinaryDIS(inputStream);
+       this.explodingObject.initFromBinary(inputStream);
        this.explosiveMaterial = inputStream.readUShort();
        this.padding = inputStream.readUShort();
        this.explosiveForce = inputStream.readFloat32();
   };
 
-  dis.ExplosionDescriptor.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ExplosionDescriptor.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.explodingObject.encodeToBinaryDIS(outputStream);
+       this.explodingObject.encodeToBinary(outputStream);
        outputStream.writeUShort(this.explosiveMaterial);
        outputStream.writeUShort(this.padding);
        outputStream.writeFloat32(this.explosiveForce);
@@ -7732,12 +7945,12 @@ exports.ExplosionDescriptor = dis.ExplosionDescriptor;
 /**
  * The False Targets attribute record shall be used to communicate discrete values that are associated with false targets jamming that cannot be referenced to an emitter mode. The values provided in the False Targets attri- bute record shall be considered valid only for the victim radar beams listed in the jamming beam's Track/Jam Data records (provided in the associated Electromagnetic Emission PDU). Section 6.2.21.3
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7776,10 +7989,9 @@ dis.FalseTargetsAttribute = function()
 
    this.echoSpacing = 0;
 
-  dis.FalseTargetsAttribute.prototype.initFromBinaryDIS = function(inputStream)
+  dis.FalseTargetsAttribute.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.padding = inputStream.readUShort();
        this.emitterNumber = inputStream.readUByte();
@@ -7794,9 +8006,8 @@ dis.FalseTargetsAttribute = function()
        this.echoSpacing = inputStream.readFloat32();
   };
 
-  dis.FalseTargetsAttribute.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.FalseTargetsAttribute.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUShort(this.padding);
@@ -7821,12 +8032,12 @@ exports.FalseTargetsAttribute = dis.FalseTargetsAttribute;
 /**
  * Represents the postion and state of one entity in the world. This is identical in function to entity state pdu, but generates less garbage to collect in the Java world. Section 7.2.2. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -7873,7 +8084,7 @@ dis.FastEntityStatePdu = function()
    this.entity = 0;
 
    /** what force this entity is affiliated with, eg red, blue, neutral, etc */
-   this.forceID = 0;
+   this.forceId = 0;
 
    /** How many variable (nee articulation) parameters are in the variable length list */
    this.numberOfVariableParameters = 0;
@@ -7978,21 +8189,20 @@ dis.FastEntityStatePdu = function()
    /** variable length list of variable parameters. In earlier versions of DIS these were known as articulation parameters */
     this.variableParameters = new Array();
  
-  dis.FastEntityStatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.FastEntityStatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
        this.site = inputStream.readUShort();
        this.application = inputStream.readUShort();
        this.entity = inputStream.readUShort();
-       this.forceID = inputStream.readUByte();
+       this.forceId = inputStream.readUByte();
        this.numberOfVariableParameters = inputStream.readByte();
        this.entityKind = inputStream.readUByte();
        this.domain = inputStream.readUByte();
@@ -8037,15 +8247,14 @@ dis.FastEntityStatePdu = function()
        for(var idx = 0; idx < this.numberOfVariableParameters; idx++)
        {
            var anX = new dis.VariableParameter();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableParameters.push(anX);
        }
 
   };
 
-  dis.FastEntityStatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.FastEntityStatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -8057,7 +8266,7 @@ dis.FastEntityStatePdu = function()
        outputStream.writeUShort(this.site);
        outputStream.writeUShort(this.application);
        outputStream.writeUShort(this.entity);
-       outputStream.writeUByte(this.forceID);
+       outputStream.writeUByte(this.forceId);
        outputStream.writeByte(this.numberOfVariableParameters);
        outputStream.writeUByte(this.entityKind);
        outputStream.writeUByte(this.domain);
@@ -8101,7 +8310,7 @@ dis.FastEntityStatePdu = function()
        outputStream.writeInt(this.capabilities);
        for(var idx = 0; idx < this.variableParameters.length; idx++)
        {
-           variableParameters[idx].encodeToBinaryDIS(outputStream);
+           variableParameters[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -8115,12 +8324,12 @@ exports.FastEntityStatePdu = dis.FastEntityStatePdu;
 /**
  *  The firing of a weapon or expendable shall be communicated by issuing a Fire PDU. Sectioin 7.3.2. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8184,31 +8393,29 @@ dis.FirePdu = function()
    /** This field shall specify the range that an entity’s fire control system has assumed in computing the fire control solution. This field shall be represented by a 32-bit floating point number in meters. For systems where range is unknown or unavailable, this field shall contain a value of zero. */
    this.range = 0;
 
-  dis.FirePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.FirePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.firingEntityID.initFromBinaryDIS(inputStream);
-       this.targetEntityID.initFromBinaryDIS(inputStream);
-       this.munitionExpendibleID.initFromBinaryDIS(inputStream);
-       this.eventID.initFromBinaryDIS(inputStream);
-       this.fireMissionIndex = inputStream.readInt();
-       this.locationInWorldCoordinates.initFromBinaryDIS(inputStream);
-       this.descriptor.initFromBinaryDIS(inputStream);
-       this.velocity.initFromBinaryDIS(inputStream);
+       this.firingEntityID.initFromBinary(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
+       this.munitionExpendibleID.initFromBinary(inputStream);
+       this.eventID.initFromBinary(inputStream);
+       this.fireMissionIndex = inputStream.readUInt();
+       this.locationInWorldCoordinates.initFromBinary(inputStream);
+       this.descriptor.initFromBinary(inputStream);
+       this.velocity.initFromBinary(inputStream);
        this.range = inputStream.readFloat32();
   };
 
-  dis.FirePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.FirePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -8217,14 +8424,14 @@ dis.FirePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.firingEntityID.encodeToBinaryDIS(outputStream);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
-       this.munitionExpendibleID.encodeToBinaryDIS(outputStream);
-       this.eventID.encodeToBinaryDIS(outputStream);
+       this.firingEntityID.encodeToBinary(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
+       this.munitionExpendibleID.encodeToBinary(outputStream);
+       this.eventID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.fireMissionIndex);
-       this.locationInWorldCoordinates.encodeToBinaryDIS(outputStream);
-       this.descriptor.encodeToBinaryDIS(outputStream);
-       this.velocity.encodeToBinaryDIS(outputStream);
+       this.locationInWorldCoordinates.encodeToBinary(outputStream);
+       this.descriptor.encodeToBinary(outputStream);
+       this.velocity.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.range);
   };
 }; // end of class
@@ -8237,12 +8444,12 @@ exports.FirePdu = dis.FirePdu;
 /**
  * Fixed Datum Record. Section 6.2.38
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8261,16 +8468,14 @@ dis.FixedDatum = function()
    /** Value for the fixed datum */
    this.fixedDatumValue = 0;
 
-  dis.FixedDatum.prototype.initFromBinaryDIS = function(inputStream)
+  dis.FixedDatum.prototype.initFromBinary = function(inputStream)
   {
-
-       this.fixedDatumID = inputStream.readInt();
-       this.fixedDatumValue = inputStream.readInt();
+       this.fixedDatumID = inputStream.readUInt();
+       this.fixedDatumValue = inputStream.readUInt();
   };
 
-  dis.FixedDatum.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.FixedDatum.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.fixedDatumID);
        outputStream.writeUInt(this.fixedDatumValue);
   };
@@ -8284,12 +8489,12 @@ exports.FixedDatum = dis.FixedDatum;
 /**
  * 32 bit piece of data
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8305,18 +8510,16 @@ dis.FourByteChunk = function()
    /** four bytes of arbitrary data */
    this.otherParameters = new Array(0, 0, 0, 0);
 
-  dis.FourByteChunk.prototype.initFromBinaryDIS = function(inputStream)
+  dis.FourByteChunk.prototype.initFromBinary = function(inputStream)
   {
-
        for(var idx = 0; idx < 4; idx++)
        {
           this.otherParameters[ idx ] = inputStream.readByte();
        }
   };
 
-  dis.FourByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.FourByteChunk.prototype.encodeToBinary = function(outputStream)
   {
-
        for(var idx = 0; idx < 4; idx++)
        {
           outputStream.writeByte(this.otherParameters[ idx ] );
@@ -8332,12 +8535,12 @@ exports.FourByteChunk = dis.FourByteChunk;
 /**
  * Basic operational data for IFF. Section 6.2.40.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8380,9 +8583,8 @@ dis.FundamentalOperationalData = function()
    /** parameter, enumeration */
    this.parameter6 = 0;
 
-  dis.FundamentalOperationalData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.FundamentalOperationalData.prototype.initFromBinary = function(inputStream)
   {
-
        this.systemStatus = inputStream.readUByte();
        this.dataField1 = inputStream.readUByte();
        this.informationLayers = inputStream.readUByte();
@@ -8395,9 +8597,8 @@ dis.FundamentalOperationalData = function()
        this.parameter6 = inputStream.readUShort();
   };
 
-  dis.FundamentalOperationalData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.FundamentalOperationalData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.systemStatus);
        outputStream.writeUByte(this.dataField1);
        outputStream.writeUByte(this.informationLayers);
@@ -8419,12 +8620,12 @@ exports.FundamentalOperationalData = dis.FundamentalOperationalData;
 /**
  * Grid axis record for fixed data. Section 6.2.41
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8458,9 +8659,8 @@ dis.GridAxis = function()
    /** initial grid point for the current pdu */
    this.initialIndex = 0;
 
-  dis.GridAxis.prototype.initFromBinaryDIS = function(inputStream)
+  dis.GridAxis.prototype.initFromBinary = function(inputStream)
   {
-
        this.domainInitialXi = inputStream.readFloat64();
        this.domainFinalXi = inputStream.readFloat64();
        this.domainPointsXi = inputStream.readUShort();
@@ -8470,9 +8670,8 @@ dis.GridAxis = function()
        this.initialIndex = inputStream.readUShort();
   };
 
-  dis.GridAxis.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.GridAxis.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat64(this.domainInitialXi);
        outputStream.writeFloat64(this.domainFinalXi);
        outputStream.writeUShort(this.domainPointsXi);
@@ -8491,12 +8690,12 @@ exports.GridAxis = dis.GridAxis;
 /**
  * Grid axis descriptor fo variable spacing axis data. NOT COMPLETE. Need padding to 64 bit boundary.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8539,9 +8738,8 @@ dis.GridAxisDescriptorVariable = function()
    /** list of coordinates */
     this.xiValues = new Array();
  
-  dis.GridAxisDescriptorVariable.prototype.initFromBinaryDIS = function(inputStream)
+  dis.GridAxisDescriptorVariable.prototype.initFromBinary = function(inputStream)
   {
-
        this.domainInitialXi = inputStream.readFloat64();
        this.domainFinalXi = inputStream.readFloat64();
        this.domainPointsXi = inputStream.readUShort();
@@ -8554,15 +8752,14 @@ dis.GridAxisDescriptorVariable = function()
        for(var idx = 0; idx < this.numberOfPointsOnXiAxis; idx++)
        {
            var anX = new dis.TwoByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.xiValues.push(anX);
        }
 
   };
 
-  dis.GridAxisDescriptorVariable.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.GridAxisDescriptorVariable.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat64(this.domainInitialXi);
        outputStream.writeFloat64(this.domainFinalXi);
        outputStream.writeUShort(this.domainPointsXi);
@@ -8574,7 +8771,7 @@ dis.GridAxisDescriptorVariable = function()
        outputStream.writeFloat64(this.coordinateOffsetXi);
        for(var idx = 0; idx < this.xiValues.length; idx++)
        {
-           xiValues[idx].encodeToBinaryDIS(outputStream);
+           xiValues[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -8588,12 +8785,12 @@ exports.GridAxisDescriptorVariable = dis.GridAxisDescriptorVariable;
 /**
  * Unique designation of a group of entities contained in the isGroupOfPdu. Represents a group of entities rather than a single entity. Section 6.2.43
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8612,17 +8809,15 @@ dis.GroupID = function()
    /** group number */
    this.groupNumber = 0;
 
-  dis.GroupID.prototype.initFromBinaryDIS = function(inputStream)
+  dis.GroupID.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.groupNumber = inputStream.readUShort();
   };
 
-  dis.GroupID.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.GroupID.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.groupNumber);
   };
 }; // end of class
@@ -8635,12 +8830,12 @@ exports.GroupID = dis.GroupID;
 /**
  * repeating element if IFF Data specification record
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8662,28 +8857,26 @@ dis.IFFData = function()
    /** IFF data. */
     this.iffData = new Array();
  
-  dis.IFFData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IFFData.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        for(var idx = 0; idx < this.recordLength; idx++)
        {
            var anX = new dis.OneByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.iffData.push(anX);
        }
 
   };
 
-  dis.IFFData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IFFData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        for(var idx = 0; idx < this.iffData.length; idx++)
        {
-           iffData[idx].encodeToBinaryDIS(outputStream);
+           iffData[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -8697,12 +8890,12 @@ exports.IFFData = dis.IFFData;
 /**
  * Fundamental IFF atc data. Section 6.2.45
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8736,24 +8929,22 @@ dis.IFFFundamentalParameterData = function()
    /** System-specific data */
    this.systemSpecificData = new Array(0, 0, 0);
 
-  dis.IFFFundamentalParameterData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IFFFundamentalParameterData.prototype.initFromBinary = function(inputStream)
   {
-
        this.erp = inputStream.readFloat32();
        this.frequency = inputStream.readFloat32();
        this.pgrf = inputStream.readFloat32();
        this.pulseWidth = inputStream.readFloat32();
-       this.burstLength = inputStream.readInt();
+       this.burstLength = inputStream.readUInt();
        this.applicableModes = inputStream.readUByte();
        for(var idx = 0; idx < 3; idx++)
        {
-          this.systemSpecificData[ idx ] = inputStream.readUnsignedByte();
+          this.systemSpecificData[ idx ] = inputStream.readUByte();
        }
   };
 
-  dis.IFFFundamentalParameterData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IFFFundamentalParameterData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.erp);
        outputStream.writeFloat32(this.frequency);
        outputStream.writeFloat32(this.pgrf);
@@ -8762,7 +8953,7 @@ dis.IFFFundamentalParameterData = function()
        outputStream.writeUByte(this.applicableModes);
        for(var idx = 0; idx < 3; idx++)
        {
-          outputStream.writeUnsignedByte(this.systemSpecificData[ idx ] );
+          outputStream.writeUByte(this.systemSpecificData[ idx ] );
        }
   };
 }; // end of class
@@ -8775,12 +8966,12 @@ exports.IFFFundamentalParameterData = dis.IFFFundamentalParameterData;
 /**
  * A communications node that is part of a simulted communcations network. Section 6.2.49.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8803,24 +8994,22 @@ dis.IOCommunicationsNode = function()
 
    this.communicationsNodeID = new dis.CommunicationsNodeID(); 
 
-  dis.IOCommunicationsNode.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IOCommunicationsNode.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.communcationsNodeType = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.communicationsNodeID.initFromBinaryDIS(inputStream);
+       this.communicationsNodeID.initFromBinary(inputStream);
   };
 
-  dis.IOCommunicationsNode.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IOCommunicationsNode.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUByte(this.communcationsNodeType);
        outputStream.writeUByte(this.padding);
-       this.communicationsNodeID.encodeToBinaryDIS(outputStream);
+       this.communicationsNodeID.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -8832,12 +9021,12 @@ exports.IOCommunicationsNode = dis.IOCommunicationsNode;
 /**
  * Effect of IO on an entity. Section 6.2.49.3
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8868,28 +9057,26 @@ dis.IOEffect = function()
 
    this.padding = 0;
 
-  dis.IOEffect.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IOEffect.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.ioStatus = inputStream.readUByte();
        this.ioLinkType = inputStream.readUByte();
-       this.ioEffect.initFromBinaryDIS(inputStream);
+       this.ioEffect.initFromBinary(inputStream);
        this.ioEffectDutyCycle = inputStream.readUByte();
        this.ioEffectDuration = inputStream.readUShort();
        this.ioProcess = inputStream.readUShort();
        this.padding = inputStream.readUShort();
   };
 
-  dis.IOEffect.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IOEffect.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUByte(this.ioStatus);
        outputStream.writeUByte(this.ioLinkType);
-       this.ioEffect.encodeToBinaryDIS(outputStream);
+       this.ioEffect.encodeToBinary(outputStream);
        outputStream.writeUByte(this.ioEffectDutyCycle);
        outputStream.writeUShort(this.ioEffectDuration);
        outputStream.writeUShort(this.ioProcess);
@@ -8905,12 +9092,12 @@ exports.IOEffect = dis.IOEffect;
 /**
  * Requires hand coding to be useful. Section 6.2.43
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8929,26 +9116,24 @@ dis.IffDataSpecification = function()
    /** IFF data records */
     this.iffDataRecords = new Array();
  
-  dis.IffDataSpecification.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IffDataSpecification.prototype.initFromBinary = function(inputStream)
   {
-
        this.numberOfIffDataRecords = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfIffDataRecords; idx++)
        {
            var anX = new dis.IFFData();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.iffDataRecords.push(anX);
        }
 
   };
 
-  dis.IffDataSpecification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IffDataSpecification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.numberOfIffDataRecords);
        for(var idx = 0; idx < this.iffDataRecords.length; idx++)
        {
-           iffDataRecords[idx].encodeToBinaryDIS(outputStream);
+           iffDataRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -8962,12 +9147,12 @@ exports.IffDataSpecification = dis.IffDataSpecification;
 /**
  * Intercom communcations parameters. Section 6.2.47.  This requires hand coding
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -8989,17 +9174,15 @@ dis.IntercomCommunicationsParameters = function()
    /** This is a placeholder. */
    this.recordSpecificField = 0;
 
-  dis.IntercomCommunicationsParameters.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IntercomCommunicationsParameters.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUShort();
        this.recordLength = inputStream.readUShort();
-       this.recordSpecificField = inputStream.readInt();
+       this.recordSpecificField = inputStream.readUInt();
   };
 
-  dis.IntercomCommunicationsParameters.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IntercomCommunicationsParameters.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.recordType);
        outputStream.writeUShort(this.recordLength);
        outputStream.writeUInt(this.recordSpecificField);
@@ -9014,12 +9197,12 @@ exports.IntercomCommunicationsParameters = dis.IntercomCommunicationsParameters;
 /**
  *  Detailed inofrmation about the state of an intercom device and the actions it is requestion         of another intercom device, or the response to a requested action. Required manual intervention to fix the intercom parameters,        which can be of varialbe length. Section 7.7.5 UNFINSISHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9092,40 +9275,38 @@ dis.IntercomControlPdu = function()
    /** ^^^This is wrong the length of the data field is variable. Using a long for now. */
     this.intercomParameters = new Array();
  
-  dis.IntercomControlPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IntercomControlPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
        this.controlType = inputStream.readUByte();
        this.communicationsChannelType = inputStream.readUByte();
-       this.sourceEntityID.initFromBinaryDIS(inputStream);
+       this.sourceEntityID.initFromBinary(inputStream);
        this.sourceCommunicationsDeviceID = inputStream.readUByte();
        this.sourceLineID = inputStream.readUByte();
        this.transmitPriority = inputStream.readUByte();
        this.transmitLineState = inputStream.readUByte();
        this.command = inputStream.readUByte();
-       this.masterEntityID.initFromBinaryDIS(inputStream);
+       this.masterEntityID.initFromBinary(inputStream);
        this.masterCommunicationsDeviceID = inputStream.readUShort();
-       this.intercomParametersLength = inputStream.readInt();
+       this.intercomParametersLength = inputStream.readUInt();
        for(var idx = 0; idx < this.intercomParametersLength; idx++)
        {
            var anX = new dis.IntercomCommunicationsParameters();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.intercomParameters.push(anX);
        }
 
   };
 
-  dis.IntercomControlPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IntercomControlPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -9136,18 +9317,18 @@ dis.IntercomControlPdu = function()
        outputStream.writeUByte(this.padding);
        outputStream.writeUByte(this.controlType);
        outputStream.writeUByte(this.communicationsChannelType);
-       this.sourceEntityID.encodeToBinaryDIS(outputStream);
+       this.sourceEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.sourceCommunicationsDeviceID);
        outputStream.writeUByte(this.sourceLineID);
        outputStream.writeUByte(this.transmitPriority);
        outputStream.writeUByte(this.transmitLineState);
        outputStream.writeUByte(this.command);
-       this.masterEntityID.encodeToBinaryDIS(outputStream);
+       this.masterEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.masterCommunicationsDeviceID);
        outputStream.writeUInt(this.intercomParametersLength);
        for(var idx = 0; idx < this.intercomParameters.length; idx++)
        {
-           intercomParameters[idx].encodeToBinaryDIS(outputStream);
+           intercomParameters[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -9161,12 +9342,12 @@ exports.IntercomControlPdu = dis.IntercomControlPdu;
 /**
  * Unique designation of an attached or unattached intercom in an event or exercirse. Section 6.2.48
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9187,18 +9368,16 @@ dis.IntercomIdentifier = function()
 
    this.intercomNumber = 0;
 
-  dis.IntercomIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IntercomIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
        this.siteNumber = inputStream.readUShort();
        this.applicationNumber = inputStream.readUShort();
        this.referenceNumber = inputStream.readUShort();
        this.intercomNumber = inputStream.readUShort();
   };
 
-  dis.IntercomIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IntercomIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.siteNumber);
        outputStream.writeUShort(this.applicationNumber);
        outputStream.writeUShort(this.referenceNumber);
@@ -9214,12 +9393,12 @@ exports.IntercomIdentifier = dis.IntercomIdentifier;
 /**
  *  Actual transmission of intercome voice data. Section 7.7.5. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9280,36 +9459,34 @@ dis.IntercomSignalPdu = function()
    /** data bytes */
     this.data = new Array();
  
-  dis.IntercomSignalPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IntercomSignalPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.entityID.initFromBinaryDIS(inputStream);
+       this.entityID.initFromBinary(inputStream);
        this.communicationsDeviceID = inputStream.readUShort();
        this.encodingScheme = inputStream.readUShort();
        this.tdlType = inputStream.readUShort();
-       this.sampleRate = inputStream.readInt();
+       this.sampleRate = inputStream.readUInt();
        this.dataLength = inputStream.readUShort();
        this.samples = inputStream.readUShort();
        for(var idx = 0; idx < this.dataLength; idx++)
        {
            var anX = new dis.OneByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.data.push(anX);
        }
 
   };
 
-  dis.IntercomSignalPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IntercomSignalPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -9318,7 +9495,7 @@ dis.IntercomSignalPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.entityID.encodeToBinaryDIS(outputStream);
+       this.entityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.communicationsDeviceID);
        outputStream.writeUShort(this.encodingScheme);
        outputStream.writeUShort(this.tdlType);
@@ -9327,7 +9504,7 @@ dis.IntercomSignalPdu = function()
        outputStream.writeUShort(this.samples);
        for(var idx = 0; idx < this.data.length; idx++)
        {
-           data[idx].encodeToBinaryDIS(outputStream);
+           data[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -9341,12 +9518,12 @@ exports.IntercomSignalPdu = dis.IntercomSignalPdu;
 /**
  *  The joining of two or more simulation entities is communicated by this PDU. Section 7.8.5 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9401,28 +9578,26 @@ dis.IsPartOfPdu = function()
    /** entity type */
    this.partEntityType = new dis.EntityType(); 
 
-  dis.IsPartOfPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.IsPartOfPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.orginatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.relationship.initFromBinaryDIS(inputStream);
-       this.partLocation.initFromBinaryDIS(inputStream);
-       this.namedLocationID.initFromBinaryDIS(inputStream);
-       this.partEntityType.initFromBinaryDIS(inputStream);
+       this.orginatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.relationship.initFromBinary(inputStream);
+       this.partLocation.initFromBinary(inputStream);
+       this.namedLocationID.initFromBinary(inputStream);
+       this.partEntityType.initFromBinary(inputStream);
   };
 
-  dis.IsPartOfPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.IsPartOfPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -9431,12 +9606,12 @@ dis.IsPartOfPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.orginatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.relationship.encodeToBinaryDIS(outputStream);
-       this.partLocation.encodeToBinaryDIS(outputStream);
-       this.namedLocationID.encodeToBinaryDIS(outputStream);
-       this.partEntityType.encodeToBinaryDIS(outputStream);
+       this.orginatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.relationship.encodeToBinary(outputStream);
+       this.partLocation.encodeToBinary(outputStream);
+       this.namedLocationID.encodeToBinary(outputStream);
+       this.partEntityType.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -9448,12 +9623,12 @@ exports.IsPartOfPdu = dis.IsPartOfPdu;
 /**
  * Jamming technique. Section 6.2.49
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9474,18 +9649,16 @@ dis.JammingTechnique = function()
 
    this.specific = 0;
 
-  dis.JammingTechnique.prototype.initFromBinaryDIS = function(inputStream)
+  dis.JammingTechnique.prototype.initFromBinary = function(inputStream)
   {
-
        this.kind = inputStream.readUByte();
        this.category = inputStream.readUByte();
        this.subcategory = inputStream.readUByte();
        this.specific = inputStream.readUByte();
   };
 
-  dis.JammingTechnique.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.JammingTechnique.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.kind);
        outputStream.writeUByte(this.category);
        outputStream.writeUByte(this.subcategory);
@@ -9501,12 +9674,12 @@ exports.JammingTechnique = dis.JammingTechnique;
 /**
  * Identity of a communications node. Section 6.2.50
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9533,28 +9706,26 @@ dis.LaunchedMunitionRecord = function()
 
    this.targetLocation = new dis.Vector3Double(); 
 
-  dis.LaunchedMunitionRecord.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LaunchedMunitionRecord.prototype.initFromBinary = function(inputStream)
   {
-
-       this.fireEventID.initFromBinaryDIS(inputStream);
+       this.fireEventID.initFromBinary(inputStream);
        this.padding = inputStream.readUShort();
-       this.firingEntityID.initFromBinaryDIS(inputStream);
+       this.firingEntityID.initFromBinary(inputStream);
        this.padding2 = inputStream.readUShort();
-       this.targetEntityID.initFromBinaryDIS(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
        this.padding3 = inputStream.readUShort();
-       this.targetLocation.initFromBinaryDIS(inputStream);
+       this.targetLocation.initFromBinary(inputStream);
   };
 
-  dis.LaunchedMunitionRecord.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LaunchedMunitionRecord.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.fireEventID.encodeToBinaryDIS(outputStream);
+       this.fireEventID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding);
-       this.firingEntityID.encodeToBinaryDIS(outputStream);
+       this.firingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding2);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding3);
-       this.targetLocation.encodeToBinaryDIS(outputStream);
+       this.targetLocation.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -9566,12 +9737,12 @@ exports.LaunchedMunitionRecord = dis.LaunchedMunitionRecord;
 /**
  * The identification of the additional information layer number, layer-specific information, and the length of the layer. Section 6.2.51
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9592,17 +9763,15 @@ dis.LayerHeader = function()
    /** This field shall specify the length in octets of the layer, including the Layer Header record */
    this.length = 0;
 
-  dis.LayerHeader.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LayerHeader.prototype.initFromBinary = function(inputStream)
   {
-
        this.layerNumber = inputStream.readUByte();
        this.layerSpecificInformation = inputStream.readUByte();
        this.length = inputStream.readUShort();
   };
 
-  dis.LayerHeader.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LayerHeader.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.layerNumber);
        outputStream.writeUByte(this.layerSpecificInformation);
        outputStream.writeUShort(this.length);
@@ -9617,12 +9786,12 @@ exports.LayerHeader = dis.LayerHeader;
 /**
  * : Information abut the addition or modification of a synthecic enviroment object that      is anchored to the terrain with a single point and has size or orientation. Section 7.10.5 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9686,37 +9855,35 @@ dis.LinearObjectStatePdu = function()
    /** Linear segment parameters */
     this.linearSegmentParameters = new Array();
  
-  dis.LinearObjectStatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LinearObjectStatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.objectID.initFromBinaryDIS(inputStream);
-       this.referencedObjectID.initFromBinaryDIS(inputStream);
+       this.objectID.initFromBinary(inputStream);
+       this.referencedObjectID.initFromBinary(inputStream);
        this.updateNumber = inputStream.readUShort();
        this.forceID = inputStream.readUByte();
        this.numberOfSegments = inputStream.readUByte();
-       this.requesterID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.objectType.initFromBinaryDIS(inputStream);
+       this.requesterID.initFromBinary(inputStream);
+       this.receivingID.initFromBinary(inputStream);
+       this.objectType.initFromBinary(inputStream);
        for(var idx = 0; idx < this.numberOfSegments; idx++)
        {
            var anX = new dis.LinearSegmentParameter();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.linearSegmentParameters.push(anX);
        }
 
   };
 
-  dis.LinearObjectStatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LinearObjectStatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -9725,17 +9892,17 @@ dis.LinearObjectStatePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.objectID.encodeToBinaryDIS(outputStream);
-       this.referencedObjectID.encodeToBinaryDIS(outputStream);
+       this.objectID.encodeToBinary(outputStream);
+       this.referencedObjectID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.updateNumber);
        outputStream.writeUByte(this.forceID);
        outputStream.writeUByte(this.numberOfSegments);
-       this.requesterID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
-       this.objectType.encodeToBinaryDIS(outputStream);
+       this.requesterID.encodeToBinary(outputStream);
+       this.receivingID.encodeToBinary(outputStream);
+       this.objectType.encodeToBinary(outputStream);
        for(var idx = 0; idx < this.linearSegmentParameters.length; idx++)
        {
-           linearSegmentParameters[idx].encodeToBinaryDIS(outputStream);
+           linearSegmentParameters[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -9749,12 +9916,12 @@ exports.LinearObjectStatePdu = dis.LinearObjectStatePdu;
 /**
  * The specification of an individual segment of a linear segment synthetic environment object in a Linear Object State PDU Section 6.2.52
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9800,31 +9967,29 @@ dis.LinearSegmentParameter = function()
    /** padding */
    this.padding = 0;
 
-  dis.LinearSegmentParameter.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LinearSegmentParameter.prototype.initFromBinary = function(inputStream)
   {
-
        this.segmentNumber = inputStream.readUByte();
        this.segmentModification = inputStream.readUByte();
        this.generalSegmentAppearance = inputStream.readUShort();
-       this.specificSegmentAppearance = inputStream.readInt();
-       this.segmentLocation.initFromBinaryDIS(inputStream);
-       this.segmentOrientation.initFromBinaryDIS(inputStream);
+       this.specificSegmentAppearance = inputStream.readUInt();
+       this.segmentLocation.initFromBinary(inputStream);
+       this.segmentOrientation.initFromBinary(inputStream);
        this.segmentLength = inputStream.readFloat32();
        this.segmentWidth = inputStream.readFloat32();
        this.segmentHeight = inputStream.readFloat32();
        this.segmentDepth = inputStream.readFloat32();
-       this.padding = inputStream.readInt();
+       this.padding = inputStream.readUInt();
   };
 
-  dis.LinearSegmentParameter.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LinearSegmentParameter.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.segmentNumber);
        outputStream.writeUByte(this.segmentModification);
        outputStream.writeUShort(this.generalSegmentAppearance);
        outputStream.writeUInt(this.specificSegmentAppearance);
-       this.segmentLocation.encodeToBinaryDIS(outputStream);
-       this.segmentOrientation.encodeToBinaryDIS(outputStream);
+       this.segmentLocation.encodeToBinary(outputStream);
+       this.segmentOrientation.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.segmentLength);
        outputStream.writeFloat32(this.segmentWidth);
        outputStream.writeFloat32(this.segmentHeight);
@@ -9841,12 +10006,12 @@ exports.LinearSegmentParameter = dis.LinearSegmentParameter;
 /**
  * The unique designation of each entity in an event or exercise that is contained in a Live Entity PDU. Section 6.2.54 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9865,17 +10030,15 @@ dis.LiveEntityIdentifier = function()
    /** Live entity number  */
    this.entityNumber = 0;
 
-  dis.LiveEntityIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LiveEntityIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.liveSimulationAddress.initFromBinaryDIS(inputStream);
+       this.liveSimulationAddress.initFromBinary(inputStream);
        this.entityNumber = inputStream.readUShort();
   };
 
-  dis.LiveEntityIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LiveEntityIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.liveSimulationAddress.encodeToBinaryDIS(outputStream);
+       this.liveSimulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.entityNumber);
   };
 }; // end of class
@@ -9888,12 +10051,12 @@ exports.LiveEntityIdentifier = dis.LiveEntityIdentifier;
 /**
  * The live entity PDUs have a header with some different field names, but the same length. Section 9.3.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9930,22 +10093,20 @@ dis.LiveEntityPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.LiveEntityPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LiveEntityPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.subprotocolNumber = inputStream.readUShort();
        this.padding = inputStream.readUByte();
   };
 
-  dis.LiveEntityPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LiveEntityPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -9965,12 +10126,12 @@ exports.LiveEntityPdu = dis.LiveEntityPdu;
 /**
  * A simulation's designation associated with all Live Entity IDs contained in Live Entity PDUs. Section 6.2.55 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -9989,16 +10150,14 @@ dis.LiveSimulationAddress = function()
    /** An application associated with a live site is termed a live application. Each live application participating in an event  */
    this.liveApplicationNumber = 0;
 
-  dis.LiveSimulationAddress.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LiveSimulationAddress.prototype.initFromBinary = function(inputStream)
   {
-
        this.liveSiteNumber = inputStream.readUByte();
        this.liveApplicationNumber = inputStream.readUByte();
   };
 
-  dis.LiveSimulationAddress.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LiveSimulationAddress.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.liveSiteNumber);
        outputStream.writeUByte(this.liveApplicationNumber);
   };
@@ -10012,12 +10171,12 @@ exports.LiveSimulationAddress = dis.LiveSimulationAddress;
 /**
  *  Abstract superclass for logistics PDUs. Section 7.4 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10054,22 +10213,20 @@ dis.LogisticsFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.LogisticsFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.LogisticsFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.LogisticsFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.LogisticsFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -10089,12 +10246,12 @@ exports.LogisticsFamilyPdu = dis.LogisticsFamilyPdu;
 /**
  * The unique designation of a mine contained in the Minefield Data PDU. No espdus are issued for mine entities.  Section 6.2.55 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10113,17 +10270,15 @@ dis.MineEntityIdentifier = function()
    /**  */
    this.mineEntityNumber = 0;
 
-  dis.MineEntityIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MineEntityIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.mineEntityNumber = inputStream.readUShort();
   };
 
-  dis.MineEntityIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MineEntityIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.mineEntityNumber);
   };
 }; // end of class
@@ -10136,12 +10291,12 @@ exports.MineEntityIdentifier = dis.MineEntityIdentifier;
 /**
  *  Abstract superclass for PDUs relating to minefields. Section 7.9
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10178,22 +10333,20 @@ dis.MinefieldFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.MinefieldFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MinefieldFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.MinefieldFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MinefieldFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -10213,12 +10366,12 @@ exports.MinefieldFamilyPdu = dis.MinefieldFamilyPdu;
 /**
  * The unique designation of a minefield Section 6.2.56 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10237,17 +10390,15 @@ dis.MinefieldIdentifier = function()
    /**  */
    this.minefieldNumber = 0;
 
-  dis.MinefieldIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MinefieldIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.minefieldNumber = inputStream.readUShort();
   };
 
-  dis.MinefieldIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MinefieldIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.minefieldNumber);
   };
 }; // end of class
@@ -10260,12 +10411,12 @@ exports.MinefieldIdentifier = dis.MinefieldIdentifier;
 /**
  * proivde the means to request a retransmit of a minefield data pdu. Section 7.9.5 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10317,33 +10468,31 @@ dis.MinefieldResponseNackPdu = function()
    /** PDU sequence numbers that were missing */
     this.missingPduSequenceNumbers = new Array();
  
-  dis.MinefieldResponseNackPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MinefieldResponseNackPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.minefieldID.initFromBinaryDIS(inputStream);
-       this.requestingEntityID.initFromBinaryDIS(inputStream);
+       this.minefieldID.initFromBinary(inputStream);
+       this.requestingEntityID.initFromBinary(inputStream);
        this.requestID = inputStream.readUByte();
        this.numberOfMissingPdus = inputStream.readUByte();
        for(var idx = 0; idx < this.numberOfMissingPdus; idx++)
        {
            var anX = new dis.EightByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.missingPduSequenceNumbers.push(anX);
        }
 
   };
 
-  dis.MinefieldResponseNackPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MinefieldResponseNackPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -10352,13 +10501,13 @@ dis.MinefieldResponseNackPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.minefieldID.encodeToBinaryDIS(outputStream);
-       this.requestingEntityID.encodeToBinaryDIS(outputStream);
+       this.minefieldID.encodeToBinary(outputStream);
+       this.requestingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requestID);
        outputStream.writeUByte(this.numberOfMissingPdus);
        for(var idx = 0; idx < this.missingPduSequenceNumbers.length; idx++)
        {
-           missingPduSequenceNumbers[idx].encodeToBinaryDIS(outputStream);
+           missingPduSequenceNumbers[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -10372,12 +10521,12 @@ exports.MinefieldResponseNackPdu = dis.MinefieldResponseNackPdu;
 /**
  * Information about a minefield sensor. Section 6.2.57
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10393,15 +10542,13 @@ dis.MinefieldSensorType = function()
    /** sensor type. bit fields 0-3 are the type category, 4-15 are teh subcategory */
    this.sensorType = 0;
 
-  dis.MinefieldSensorType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MinefieldSensorType.prototype.initFromBinary = function(inputStream)
   {
-
        this.sensorType = inputStream.readUShort();
   };
 
-  dis.MinefieldSensorType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MinefieldSensorType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.sensorType);
   };
 }; // end of class
@@ -10414,12 +10561,12 @@ exports.MinefieldSensorType = dis.MinefieldSensorType;
 /**
  * information about the complete minefield. The minefield presence, perimiter, etc. Section 7.9.2 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10492,46 +10639,44 @@ dis.MinefieldStatePdu = function()
    /** Type of mines */
     this.mineType = new Array();
  
-  dis.MinefieldStatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MinefieldStatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.minefieldID.initFromBinaryDIS(inputStream);
+       this.minefieldID.initFromBinary(inputStream);
        this.minefieldSequence = inputStream.readUShort();
        this.forceID = inputStream.readUByte();
        this.numberOfPerimeterPoints = inputStream.readUByte();
-       this.minefieldType.initFromBinaryDIS(inputStream);
+       this.minefieldType.initFromBinary(inputStream);
        this.numberOfMineTypes = inputStream.readUShort();
-       this.minefieldLocation.initFromBinaryDIS(inputStream);
-       this.minefieldOrientation.initFromBinaryDIS(inputStream);
+       this.minefieldLocation.initFromBinary(inputStream);
+       this.minefieldOrientation.initFromBinary(inputStream);
        this.appearance = inputStream.readUShort();
        this.protocolMode = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfPerimeterPoints; idx++)
        {
            var anX = new dis.Vector2Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.perimeterPoints.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfMineTypes; idx++)
        {
            var anX = new dis.EntityType();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.mineType.push(anX);
        }
 
   };
 
-  dis.MinefieldStatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MinefieldStatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -10540,24 +10685,24 @@ dis.MinefieldStatePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.minefieldID.encodeToBinaryDIS(outputStream);
+       this.minefieldID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.minefieldSequence);
        outputStream.writeUByte(this.forceID);
        outputStream.writeUByte(this.numberOfPerimeterPoints);
-       this.minefieldType.encodeToBinaryDIS(outputStream);
+       this.minefieldType.encodeToBinary(outputStream);
        outputStream.writeUShort(this.numberOfMineTypes);
-       this.minefieldLocation.encodeToBinaryDIS(outputStream);
-       this.minefieldOrientation.encodeToBinaryDIS(outputStream);
+       this.minefieldLocation.encodeToBinary(outputStream);
+       this.minefieldOrientation.encodeToBinary(outputStream);
        outputStream.writeUShort(this.appearance);
        outputStream.writeUShort(this.protocolMode);
        for(var idx = 0; idx < this.perimeterPoints.length; idx++)
        {
-           perimeterPoints[idx].encodeToBinaryDIS(outputStream);
+           perimeterPoints[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.mineType.length; idx++)
        {
-           mineType[idx].encodeToBinaryDIS(outputStream);
+           mineType[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -10571,12 +10716,12 @@ exports.MinefieldStatePdu = dis.MinefieldStatePdu;
 /**
  * Modulation parameters associated with a specific radio system. INCOMPLETE. 6.2.58 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10589,14 +10734,12 @@ if (typeof exports === "undefined")
 
 dis.ModulationParameters = function()
 {
-  dis.ModulationParameters.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ModulationParameters.prototype.initFromBinary = function(inputStream)
   {
-
   };
 
-  dis.ModulationParameters.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ModulationParameters.prototype.encodeToBinary = function(outputStream)
   {
-
   };
 }; // end of class
 
@@ -10608,12 +10751,12 @@ exports.ModulationParameters = dis.ModulationParameters;
 /**
  * Information about the type of modulation used for radio transmission. 6.2.59 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10638,18 +10781,16 @@ dis.ModulationType = function()
    /** the radio system associated with this Transmitter PDU and shall be used as the basis to interpret other fields whose values depend on a specific radio system. */
    this.radioSystem = 0;
 
-  dis.ModulationType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ModulationType.prototype.initFromBinary = function(inputStream)
   {
-
        this.spreadSpectrum = inputStream.readUShort();
        this.majorModulation = inputStream.readUShort();
        this.detail = inputStream.readUShort();
        this.radioSystem = inputStream.readUShort();
   };
 
-  dis.ModulationType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ModulationType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.spreadSpectrum);
        outputStream.writeUShort(this.majorModulation);
        outputStream.writeUShort(this.detail);
@@ -10665,12 +10806,12 @@ exports.ModulationType = dis.ModulationType;
 /**
  * An entity's munition (e.g., bomb, missile) information shall be represented by one or more Munition records. For each type or location of munition, this record shall specify the type, location, quantity and status of munitions that an entity contains. Section 6.2.60 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10698,20 +10839,18 @@ dis.Munition = function()
    /** padding  */
    this.padding = 0;
 
-  dis.Munition.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Munition.prototype.initFromBinary = function(inputStream)
   {
-
-       this.munitionType.initFromBinaryDIS(inputStream);
-       this.station = inputStream.readInt();
+       this.munitionType.initFromBinary(inputStream);
+       this.station = inputStream.readUInt();
        this.quantity = inputStream.readUShort();
        this.munitionStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.Munition.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Munition.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.munitionType.encodeToBinaryDIS(outputStream);
+       this.munitionType.encodeToBinary(outputStream);
        outputStream.writeUInt(this.station);
        outputStream.writeUShort(this.quantity);
        outputStream.writeUByte(this.munitionStatus);
@@ -10727,12 +10866,12 @@ exports.Munition = dis.Munition;
 /**
  * Represents the firing or detonation of a munition. Section 6.2.19.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10760,20 +10899,18 @@ dis.MunitionDescriptor = function()
    /** rate at which the munition was fired */
    this.rate = 0;
 
-  dis.MunitionDescriptor.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MunitionDescriptor.prototype.initFromBinary = function(inputStream)
   {
-
-       this.munitionType.initFromBinaryDIS(inputStream);
+       this.munitionType.initFromBinary(inputStream);
        this.warhead = inputStream.readUShort();
        this.fuse = inputStream.readUShort();
        this.quantity = inputStream.readUShort();
        this.rate = inputStream.readUShort();
   };
 
-  dis.MunitionDescriptor.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MunitionDescriptor.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.munitionType.encodeToBinaryDIS(outputStream);
+       this.munitionType.encodeToBinary(outputStream);
        outputStream.writeUShort(this.warhead);
        outputStream.writeUShort(this.fuse);
        outputStream.writeUShort(this.quantity);
@@ -10789,12 +10926,12 @@ exports.MunitionDescriptor = dis.MunitionDescriptor;
 /**
  * indicate weapons (munitions) previously communicated via the Munition record. Section 6.2.61 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10825,21 +10962,19 @@ dis.MunitionReload = function()
    /** the number of seconds of sim time required to reload the max possible quantity */
    this.maximumQuantityReloadTime = 0;
 
-  dis.MunitionReload.prototype.initFromBinaryDIS = function(inputStream)
+  dis.MunitionReload.prototype.initFromBinary = function(inputStream)
   {
-
-       this.munitionType.initFromBinaryDIS(inputStream);
-       this.station = inputStream.readInt();
+       this.munitionType.initFromBinary(inputStream);
+       this.station = inputStream.readUInt();
        this.standardQuantity = inputStream.readUShort();
        this.maximumQuantity = inputStream.readUShort();
-       this.standardQuantityReloadTime = inputStream.readInt();
-       this.maximumQuantityReloadTime = inputStream.readInt();
+       this.standardQuantityReloadTime = inputStream.readUInt();
+       this.maximumQuantityReloadTime = inputStream.readUInt();
   };
 
-  dis.MunitionReload.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.MunitionReload.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.munitionType.encodeToBinaryDIS(outputStream);
+       this.munitionType.encodeToBinary(outputStream);
        outputStream.writeUInt(this.station);
        outputStream.writeUShort(this.standardQuantity);
        outputStream.writeUShort(this.maximumQuantity);
@@ -10856,12 +10991,12 @@ exports.MunitionReload = dis.MunitionReload;
 /**
  * Information about the discrete positional relationship of the part entity with respect to the its host entity Section 6.2.62 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10880,16 +11015,14 @@ dis.NamedLocationIdentification = function()
    /** the number of the particular wing station, cargo hold etc., at which the part is attached.  */
    this.stationNumber = 0;
 
-  dis.NamedLocationIdentification.prototype.initFromBinaryDIS = function(inputStream)
+  dis.NamedLocationIdentification.prototype.initFromBinary = function(inputStream)
   {
-
        this.stationName = inputStream.readUShort();
        this.stationNumber = inputStream.readUShort();
   };
 
-  dis.NamedLocationIdentification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.NamedLocationIdentification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.stationName);
        outputStream.writeUShort(this.stationNumber);
   };
@@ -10903,12 +11036,12 @@ exports.NamedLocationIdentification = dis.NamedLocationIdentification;
 /**
  * The unique designation of an environmental object. Section 6.2.63
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10927,17 +11060,15 @@ dis.ObjectIdentifier = function()
    /** object number */
    this.objectNumber = 0;
 
-  dis.ObjectIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ObjectIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.objectNumber = inputStream.readUShort();
   };
 
-  dis.ObjectIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ObjectIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.objectNumber);
   };
 }; // end of class
@@ -10950,12 +11081,12 @@ exports.ObjectIdentifier = dis.ObjectIdentifier;
 /**
  * The unique designation of an environmental object. Section 6.2.64
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -10980,18 +11111,16 @@ dis.ObjectType = function()
    /** subcategory of entity */
    this.subcategory = 0;
 
-  dis.ObjectType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ObjectType.prototype.initFromBinary = function(inputStream)
   {
-
        this.domain = inputStream.readUByte();
        this.objectKind = inputStream.readUByte();
        this.category = inputStream.readUByte();
        this.subcategory = inputStream.readUByte();
   };
 
-  dis.ObjectType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ObjectType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.domain);
        outputStream.writeUByte(this.objectKind);
        outputStream.writeUByte(this.category);
@@ -11007,12 +11136,12 @@ exports.ObjectType = dis.ObjectType;
 /**
  * 8 bit piece of data
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11028,18 +11157,16 @@ dis.OneByteChunk = function()
    /** one byte of arbitrary data */
    this.otherParameters = new Array(0);
 
-  dis.OneByteChunk.prototype.initFromBinaryDIS = function(inputStream)
+  dis.OneByteChunk.prototype.initFromBinary = function(inputStream)
   {
-
        for(var idx = 0; idx < 1; idx++)
        {
           this.otherParameters[ idx ] = inputStream.readByte();
        }
   };
 
-  dis.OneByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.OneByteChunk.prototype.encodeToBinary = function(outputStream)
   {
-
        for(var idx = 0; idx < 1; idx++)
        {
           outputStream.writeByte(this.otherParameters[ idx ] );
@@ -11055,12 +11182,12 @@ exports.OneByteChunk = dis.OneByteChunk;
 /**
  * used to convey entity and conflict status information associated with transferring ownership of an entity. Section 6.2.65
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11082,18 +11209,16 @@ dis.OwnershipStatus = function()
    /** padding */
    this.padding = 0;
 
-  dis.OwnershipStatus.prototype.initFromBinaryDIS = function(inputStream)
+  dis.OwnershipStatus.prototype.initFromBinary = function(inputStream)
   {
-
-       this.entityId.initFromBinaryDIS(inputStream);
+       this.entityId.initFromBinary(inputStream);
        this.ownershipStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.OwnershipStatus.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.OwnershipStatus.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.entityId.encodeToBinaryDIS(outputStream);
+       this.entityId.encodeToBinary(outputStream);
        outputStream.writeUByte(this.ownershipStatus);
        outputStream.writeUByte(this.padding);
   };
@@ -11107,12 +11232,12 @@ exports.OwnershipStatus = dis.OwnershipStatus;
 /**
  * Adds some fields to the the classic PDU
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11149,22 +11274,20 @@ dis.Pdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.Pdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Pdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.Pdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Pdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -11184,12 +11307,12 @@ exports.Pdu = dis.Pdu;
 /**
  * Used for XML compatability. A container that holds PDUs
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11205,29 +11328,27 @@ dis.PduContainer = function()
    /** Number of PDUs in the container list */
    this.numberOfPdus = 0;
 
-   /** record sets */
+   /** List of PDUs */
     this.pdus = new Array();
  
-  dis.PduContainer.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PduContainer.prototype.initFromBinary = function(inputStream)
   {
-
        this.numberOfPdus = inputStream.readInt();
        for(var idx = 0; idx < this.numberOfPdus; idx++)
        {
            var anX = new dis.Pdu();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.pdus.push(anX);
        }
 
   };
 
-  dis.PduContainer.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PduContainer.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeInt(this.numberOfPdus);
        for(var idx = 0; idx < this.pdus.length; idx++)
        {
-           pdus[idx].encodeToBinaryDIS(outputStream);
+           pdus[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -11241,12 +11362,12 @@ exports.PduContainer = dis.PduContainer;
 /**
  * Not used. The PDU Header Record is directly incoroporated into the PDU class. Here for completness only. Section 6.2.66
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11283,22 +11404,20 @@ dis.PduHeader = function()
    /** zero filled array of padding */
    this.padding = 0;
 
-  dis.PduHeader.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PduHeader.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.pduLength = inputStream.readUByte();
        this.pduStatus = inputStream.readUShort();
        this.padding = inputStream.readUByte();
   };
 
-  dis.PduHeader.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PduHeader.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -11318,12 +11437,12 @@ exports.PduHeader = dis.PduHeader;
 /**
  * PDU Status. These are a series of bit fields. Represented here as just a byte. Section 6.2.67
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11339,15 +11458,13 @@ dis.PduStatus = function()
    /** Bit fields. The semantics of the bit fields depend on the PDU type */
    this.pduStatus = 0;
 
-  dis.PduStatus.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PduStatus.prototype.initFromBinary = function(inputStream)
   {
-
        this.pduStatus = inputStream.readUByte();
   };
 
-  dis.PduStatus.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PduStatus.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.pduStatus);
   };
 }; // end of class
@@ -11360,12 +11477,12 @@ exports.PduStatus = dis.PduStatus;
 /**
  * Non-DIS class, used on SQL databases. This is not in the DIS standard but can be helpful when saving DIS to a SQL database, particularly in Java.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11390,9 +11507,8 @@ dis.PduStream = function()
    /** stop time of recording, in Unix time (seconds since epoch) */
    this.stopTime = 0;
 
-  dis.PduStream.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PduStream.prototype.initFromBinary = function(inputStream)
   {
-
        for(var idx = 0; idx < 512; idx++)
        {
           this.description[ idx ] = inputStream.readByte();
@@ -11405,9 +11521,8 @@ dis.PduStream = function()
        this.stopTime = inputStream.readLong();
   };
 
-  dis.PduStream.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PduStream.prototype.encodeToBinary = function(outputStream)
   {
-
        for(var idx = 0; idx < 512; idx++)
        {
           outputStream.writeByte(this.description[ idx ] );
@@ -11429,12 +11544,12 @@ exports.PduStream = dis.PduStream;
 /**
  * The superclass for all PDUs, including classic and Live Entity (LE) PDUs. This incorporates the PduHeader record, section 7.2.2
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11465,20 +11580,18 @@ dis.PduSuperclass = function()
    /** Length, in bytes, of the PDU */
    this.length = 0;
 
-  dis.PduSuperclass.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PduSuperclass.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
   };
 
-  dis.PduSuperclass.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PduSuperclass.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -11496,12 +11609,12 @@ exports.PduSuperclass = dis.PduSuperclass;
 /**
  * : Inormation abut the addition or modification of a synthecic enviroment object that is anchored to the terrain with a single point. Section 7.10.4 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11574,34 +11687,32 @@ dis.PointObjectStatePdu = function()
    /** padding */
    this.pad2 = 0;
 
-  dis.PointObjectStatePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PointObjectStatePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.objectID.initFromBinaryDIS(inputStream);
-       this.referencedObjectID.initFromBinaryDIS(inputStream);
+       this.objectID.initFromBinary(inputStream);
+       this.referencedObjectID.initFromBinary(inputStream);
        this.updateNumber = inputStream.readUShort();
        this.forceID = inputStream.readUByte();
        this.modifications = inputStream.readUByte();
-       this.objectType.initFromBinaryDIS(inputStream);
-       this.objectLocation.initFromBinaryDIS(inputStream);
-       this.objectOrientation.initFromBinaryDIS(inputStream);
+       this.objectType.initFromBinary(inputStream);
+       this.objectLocation.initFromBinary(inputStream);
+       this.objectOrientation.initFromBinary(inputStream);
        this.objectAppearance = inputStream.readFloat64();
-       this.requesterID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.pad2 = inputStream.readInt();
+       this.requesterID.initFromBinary(inputStream);
+       this.receivingID.initFromBinary(inputStream);
+       this.pad2 = inputStream.readUInt();
   };
 
-  dis.PointObjectStatePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PointObjectStatePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -11610,17 +11721,17 @@ dis.PointObjectStatePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.objectID.encodeToBinaryDIS(outputStream);
-       this.referencedObjectID.encodeToBinaryDIS(outputStream);
+       this.objectID.encodeToBinary(outputStream);
+       this.referencedObjectID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.updateNumber);
        outputStream.writeUByte(this.forceID);
        outputStream.writeUByte(this.modifications);
-       this.objectType.encodeToBinaryDIS(outputStream);
-       this.objectLocation.encodeToBinaryDIS(outputStream);
-       this.objectOrientation.encodeToBinaryDIS(outputStream);
+       this.objectType.encodeToBinary(outputStream);
+       this.objectLocation.encodeToBinary(outputStream);
+       this.objectOrientation.encodeToBinary(outputStream);
        outputStream.writeFloat64(this.objectAppearance);
-       this.requesterID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.requesterID.encodeToBinary(outputStream);
+       this.receivingID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.pad2);
   };
 }; // end of class
@@ -11633,12 +11744,12 @@ exports.PointObjectStatePdu = dis.PointObjectStatePdu;
 /**
  * contains information describing the propulsion systems of the entity. This information shall be provided for each active propulsion system defined. Section 6.2.68
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11657,16 +11768,14 @@ dis.PropulsionSystemData = function()
    /** engine RPMs */
    this.engineRpm = 0;
 
-  dis.PropulsionSystemData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.PropulsionSystemData.prototype.initFromBinary = function(inputStream)
   {
-
        this.powerSetting = inputStream.readFloat32();
        this.engineRpm = inputStream.readFloat32();
   };
 
-  dis.PropulsionSystemData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.PropulsionSystemData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.powerSetting);
        outputStream.writeFloat32(this.engineRpm);
   };
@@ -11680,12 +11789,12 @@ exports.PropulsionSystemData = dis.PropulsionSystemData;
 /**
  * Bit field used to identify minefield data. bits 14-15 are a 2-bit enum, other bits unused. Section 6.2.69
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11701,15 +11810,13 @@ dis.ProtocolMode = function()
    /** Bitfields, 14-15 contain an enum */
    this.protocolMode = 0;
 
-  dis.ProtocolMode.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ProtocolMode.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolMode = inputStream.readUShort();
   };
 
-  dis.ProtocolMode.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ProtocolMode.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.protocolMode);
   };
 }; // end of class
@@ -11722,12 +11829,12 @@ exports.ProtocolMode = dis.ProtocolMode;
 /**
  *  Abstract superclass for radio communications PDUs. Section 7.7
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11764,22 +11871,20 @@ dis.RadioCommunicationsFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.RadioCommunicationsFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RadioCommunicationsFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.RadioCommunicationsFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RadioCommunicationsFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -11799,12 +11904,12 @@ exports.RadioCommunicationsFamilyPdu = dis.RadioCommunicationsFamilyPdu;
 /**
  * The unique designation of an attached or unattached radio in an event or exercise Section 6.2.70
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11829,18 +11934,16 @@ dis.RadioIdentifier = function()
    /**  Radio number */
    this.radioNumber = 0;
 
-  dis.RadioIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RadioIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
        this.siteNumber = inputStream.readUShort();
        this.applicationNumber = inputStream.readUShort();
        this.referenceNumber = inputStream.readUShort();
        this.radioNumber = inputStream.readUShort();
   };
 
-  dis.RadioIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RadioIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.siteNumber);
        outputStream.writeUShort(this.applicationNumber);
        outputStream.writeUShort(this.referenceNumber);
@@ -11856,12 +11959,12 @@ exports.RadioIdentifier = dis.RadioIdentifier;
 /**
  * Identifies the type of radio. Section 6.2.71
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11893,9 +11996,8 @@ dis.RadioType = function()
 
    this.extra = 0;
 
-  dis.RadioType.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RadioType.prototype.initFromBinary = function(inputStream)
   {
-
        this.entityKind = inputStream.readUByte();
        this.domain = inputStream.readUByte();
        this.country = inputStream.readUShort();
@@ -11905,9 +12007,8 @@ dis.RadioType = function()
        this.extra = inputStream.readUByte();
   };
 
-  dis.RadioType.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RadioType.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.entityKind);
        outputStream.writeUByte(this.domain);
        outputStream.writeUShort(this.country);
@@ -11926,12 +12027,12 @@ exports.RadioType = dis.RadioType;
 /**
  *  Communication of a receiver state. Section 7.7.4 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -11983,27 +12084,25 @@ dis.ReceiverPdu = function()
    /** ID of transmitting radio */
    this.transmitterRadioId = 0;
 
-  dis.ReceiverPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ReceiverPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
        this.receiverState = inputStream.readUShort();
        this.padding1 = inputStream.readUShort();
        this.receivedPoser = inputStream.readFloat32();
-       this.transmitterEntityId.initFromBinaryDIS(inputStream);
+       this.transmitterEntityId.initFromBinary(inputStream);
        this.transmitterRadioId = inputStream.readUShort();
   };
 
-  dis.ReceiverPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ReceiverPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12015,7 +12114,7 @@ dis.ReceiverPdu = function()
        outputStream.writeUShort(this.receiverState);
        outputStream.writeUShort(this.padding1);
        outputStream.writeFloat32(this.receivedPoser);
-       this.transmitterEntityId.encodeToBinaryDIS(outputStream);
+       this.transmitterEntityId.encodeToBinary(outputStream);
        outputStream.writeUShort(this.transmitterRadioId);
   };
 }; // end of class
@@ -12028,12 +12127,12 @@ exports.ReceiverPdu = dis.ReceiverPdu;
 /**
  * Section 5.3.12.13: A request for one or more records of data from an entity. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12100,38 +12199,36 @@ dis.RecordQueryReliablePdu = function()
    /** record IDs */
     this.recordIDs = new Array();
  
-  dis.RecordQueryReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RecordQueryReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
        this.eventType = inputStream.readUShort();
-       this.time = inputStream.readInt();
-       this.numberOfRecords = inputStream.readInt();
+       this.time = inputStream.readUInt();
+       this.numberOfRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfRecords; idx++)
        {
            var anX = new dis.FourByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.recordIDs.push(anX);
        }
 
   };
 
-  dis.RecordQueryReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RecordQueryReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12140,8 +12237,8 @@ dis.RecordQueryReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
@@ -12151,7 +12248,7 @@ dis.RecordQueryReliablePdu = function()
        outputStream.writeUInt(this.numberOfRecords);
        for(var idx = 0; idx < this.recordIDs.length; idx++)
        {
-           recordIDs[idx].encodeToBinaryDIS(outputStream);
+           recordIDs[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -12165,12 +12262,12 @@ exports.RecordQueryReliablePdu = dis.RecordQueryReliablePdu;
 /**
  * The identification of the records being queried 6.2.72
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12188,26 +12285,24 @@ dis.RecordQuerySpecification = function()
    /** variable length list of 32 bit records */
     this.records = new Array();
  
-  dis.RecordQuerySpecification.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RecordQuerySpecification.prototype.initFromBinary = function(inputStream)
   {
-
-       this.numberOfRecords = inputStream.readInt();
+       this.numberOfRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfRecords; idx++)
        {
            var anX = new dis.FourByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.records.push(anX);
        }
 
   };
 
-  dis.RecordQuerySpecification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RecordQuerySpecification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.numberOfRecords);
        for(var idx = 0; idx < this.records.length; idx++)
        {
-           records[idx].encodeToBinaryDIS(outputStream);
+           records[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -12221,12 +12316,12 @@ exports.RecordQuerySpecification = dis.RecordQuerySpecification;
 /**
  * This record shall specify the number of record sets contained in the Record Specification record and the record details. Section 6.2.73.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12245,26 +12340,24 @@ dis.RecordSpecification = function()
    /** variable length list record specifications. */
     this.recordSets = new Array();
  
-  dis.RecordSpecification.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RecordSpecification.prototype.initFromBinary = function(inputStream)
   {
-
-       this.numberOfRecordSets = inputStream.readInt();
+       this.numberOfRecordSets = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfRecordSets; idx++)
        {
            var anX = new dis.RecordSpecificationElement();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.recordSets.push(anX);
        }
 
   };
 
-  dis.RecordSpecification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RecordSpecification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.numberOfRecordSets);
        for(var idx = 0; idx < this.recordSets.length; idx++)
        {
-           recordSets[idx].encodeToBinaryDIS(outputStream);
+           recordSets[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -12278,12 +12371,12 @@ exports.RecordSpecification = dis.RecordSpecification;
 /**
  * Synthetic record, made up from section 6.2.72. This is used to acheive a repeating variable list element.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12314,20 +12407,18 @@ dis.RecordSpecificationElement = function()
    /** Padding of 0 to 31 unused bits as required for 32-bit alignment of the Record Set field. ^^^This is wrong--variable sized padding. MUST be patched post-code generation */
    this.pad4 = 0;
 
-  dis.RecordSpecificationElement.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RecordSpecificationElement.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordID = inputStream.readInt();
-       this.recordSetSerialNumber = inputStream.readInt();
+       this.recordID = inputStream.readUInt();
+       this.recordSetSerialNumber = inputStream.readUInt();
        this.recordLength = inputStream.readUShort();
        this.recordCount = inputStream.readUShort();
        this.recordValues = inputStream.readUShort();
        this.pad4 = inputStream.readUByte();
   };
 
-  dis.RecordSpecificationElement.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RecordSpecificationElement.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordID);
        outputStream.writeUInt(this.recordSetSerialNumber);
        outputStream.writeUShort(this.recordLength);
@@ -12345,12 +12436,12 @@ exports.RecordSpecificationElement = dis.RecordSpecificationElement;
 /**
  * The relationship of the part entity to its host entity. Section 6.2.74.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12369,16 +12460,14 @@ dis.Relationship = function()
    /** the position of the part entity with respect to the host entity and shall be represented by a 16-bit enumeration */
    this.position = 0;
 
-  dis.Relationship.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Relationship.prototype.initFromBinary = function(inputStream)
   {
-
        this.nature = inputStream.readUShort();
        this.position = inputStream.readUShort();
   };
 
-  dis.Relationship.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Relationship.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.nature);
        outputStream.writeUShort(this.position);
   };
@@ -12392,12 +12481,12 @@ exports.Relationship = dis.Relationship;
 /**
  * Section 7.5.3 The removal of an entity from an exercise shall be communicated with a Remove Entity PDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12440,36 +12529,26 @@ dis.RemoveEntityPdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for originating entity(or simulation) */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the receiving entity(or simulation) */
-   this.receivingID = new dis.EntityID(); 
-
    /** This field shall identify the specific and unique start/resume request being made by the SM */
    this.requestID = 0;
 
-  dis.RemoveEntityPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RemoveEntityPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.RemoveEntityPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RemoveEntityPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12478,10 +12557,8 @@ dis.RemoveEntityPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
   };
 }; // end of class
@@ -12494,12 +12571,12 @@ exports.RemoveEntityPdu = dis.RemoveEntityPdu;
 /**
  * Section 5.3.12.2: Removal of an entity , reliable. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12554,28 +12631,26 @@ dis.RemoveEntityReliablePdu = function()
    /** Request ID */
    this.requestID = 0;
 
-  dis.RemoveEntityReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RemoveEntityReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.RemoveEntityReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RemoveEntityReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12584,8 +12659,8 @@ dis.RemoveEntityReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
        outputStream.writeUByte(this.pad2);
@@ -12601,12 +12676,12 @@ exports.RemoveEntityReliablePdu = dis.RemoveEntityReliablePdu;
 /**
  * Section 7.4.6. Service Request PDU is received and repair is complete. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12655,26 +12730,24 @@ dis.RepairCompletePdu = function()
    /** padding, number prevents conflict with superclass ivar name */
    this.padding4 = 0;
 
-  dis.RepairCompletePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RepairCompletePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.repairingEntityID.initFromBinaryDIS(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.repairingEntityID.initFromBinary(inputStream);
        this.repair = inputStream.readUShort();
        this.padding4 = inputStream.readShort();
   };
 
-  dis.RepairCompletePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RepairCompletePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12683,8 +12756,8 @@ dis.RepairCompletePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.repairingEntityID.encodeToBinaryDIS(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.repairingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.repair);
        outputStream.writeShort(this.padding4);
   };
@@ -12698,12 +12771,12 @@ exports.RepairCompletePdu = dis.RepairCompletePdu;
 /**
  * Section 7.4.7. Sent after repair complete PDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12755,27 +12828,25 @@ dis.RepairResponsePdu = function()
    /** padding */
    this.padding2 = 0;
 
-  dis.RepairResponsePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RepairResponsePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.repairingEntityID.initFromBinaryDIS(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.repairingEntityID.initFromBinary(inputStream);
        this.repairResult = inputStream.readUByte();
        this.padding1 = inputStream.readShort();
        this.padding2 = inputStream.readByte();
   };
 
-  dis.RepairResponsePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RepairResponsePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12784,8 +12855,8 @@ dis.RepairResponsePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.repairingEntityID.encodeToBinaryDIS(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.repairingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.repairResult);
        outputStream.writeShort(this.padding1);
        outputStream.writeByte(this.padding2);
@@ -12800,12 +12871,12 @@ exports.RepairResponsePdu = dis.RepairResponsePdu;
 /**
  * A monotonically increasing number inserted into all simulation managment PDUs. This should be a hand-coded thingie, maybe a singleton. Section 6.2.75
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12821,15 +12892,13 @@ dis.RequestID = function()
    /** monotonically increasing number */
    this.requestID = 0;
 
-  dis.RequestID.prototype.initFromBinaryDIS = function(inputStream)
+  dis.RequestID.prototype.initFromBinary = function(inputStream)
   {
-
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.RequestID.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.RequestID.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.requestID);
   };
 }; // end of class
@@ -12842,12 +12911,12 @@ exports.RequestID = dis.RequestID;
 /**
  * Information used to communicate the offer of supplies by a supplying entity to a receiving entity. Section 7.4.3 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -12902,34 +12971,32 @@ dis.ResupplyOfferPdu = function()
    /** A Reord that Specifies the type of supply and the amount of that supply for each of the supply types in numberOfSupplyTypes (see 6.2.85), Section 7.4.3 */
     this.supplies = new Array();
  
-  dis.ResupplyOfferPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ResupplyOfferPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.supplyingEntityID.initFromBinaryDIS(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.supplyingEntityID.initFromBinary(inputStream);
        this.numberOfSupplyTypes = inputStream.readUByte();
        this.padding1 = inputStream.readByte();
        this.padding2 = inputStream.readShort();
        for(var idx = 0; idx < this.numberOfSupplyTypes; idx++)
        {
            var anX = new dis.SupplyQuantity();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.supplies.push(anX);
        }
 
   };
 
-  dis.ResupplyOfferPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ResupplyOfferPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -12938,14 +13005,14 @@ dis.ResupplyOfferPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.supplyingEntityID.encodeToBinaryDIS(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.supplyingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.numberOfSupplyTypes);
        outputStream.writeByte(this.padding1);
        outputStream.writeShort(this.padding2);
        for(var idx = 0; idx < this.supplies.length; idx++)
        {
-           supplies[idx].encodeToBinaryDIS(outputStream);
+           supplies[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -12959,12 +13026,12 @@ exports.ResupplyOfferPdu = dis.ResupplyOfferPdu;
 /**
  * Section 7.4.4. Receipt of supplies is communicated by issuing Resupply Received PDU. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13019,34 +13086,32 @@ dis.ResupplyReceivedPdu = function()
    /** Type and amount of supplies for each specified supply type.  See 6.2.85 for supply quantity record. */
     this.supplies = new Array();
  
-  dis.ResupplyReceivedPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ResupplyReceivedPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.supplyingEntityID.initFromBinaryDIS(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.supplyingEntityID.initFromBinary(inputStream);
        this.numberOfSupplyTypes = inputStream.readUByte();
        this.padding1 = inputStream.readShort();
        this.padding2 = inputStream.readByte();
        for(var idx = 0; idx < this.numberOfSupplyTypes; idx++)
        {
            var anX = new dis.SupplyQuantity();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.supplies.push(anX);
        }
 
   };
 
-  dis.ResupplyReceivedPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ResupplyReceivedPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -13055,14 +13120,14 @@ dis.ResupplyReceivedPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.supplyingEntityID.encodeToBinaryDIS(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.supplyingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.numberOfSupplyTypes);
        outputStream.writeShort(this.padding1);
        outputStream.writeByte(this.padding2);
        for(var idx = 0; idx < this.supplies.length; idx++)
        {
-           supplies[idx].encodeToBinaryDIS(outputStream);
+           supplies[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13076,12 +13141,12 @@ exports.ResupplyReceivedPdu = dis.ResupplyReceivedPdu;
 /**
  * Additional operational data for an IFF emitting system and the number of IFF Fundamental Parameter Data records Section 6.2.76.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13103,17 +13168,15 @@ dis.SecondaryOperationalData = function()
    /** the number of IFF Fundamental Parameter Data records that follow */
    this.numberOfIFFFundamentalParameterRecords = 0;
 
-  dis.SecondaryOperationalData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SecondaryOperationalData.prototype.initFromBinary = function(inputStream)
   {
-
        this.operationalData1 = inputStream.readUByte();
        this.operationalData2 = inputStream.readUByte();
        this.numberOfIFFFundamentalParameterRecords = inputStream.readUShort();
   };
 
-  dis.SecondaryOperationalData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SecondaryOperationalData.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.operationalData1);
        outputStream.writeUByte(this.operationalData2);
        outputStream.writeUShort(this.numberOfIFFFundamentalParameterRecords);
@@ -13128,12 +13191,12 @@ exports.SecondaryOperationalData = dis.SecondaryOperationalData;
 /**
  *  SEES PDU, supplemental emissions entity state information. Section 7.6.6 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13194,18 +13257,17 @@ dis.SeesPdu = function()
    /** variable length list of vectoring system data */
     this.vectoringSystemData = new Array();
  
-  dis.SeesPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SeesPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.orginatingEntityID.initFromBinaryDIS(inputStream);
+       this.orginatingEntityID.initFromBinary(inputStream);
        this.infraredSignatureRepresentationIndex = inputStream.readUShort();
        this.acousticSignatureRepresentationIndex = inputStream.readUShort();
        this.radarCrossSectionSignatureRepresentationIndex = inputStream.readUShort();
@@ -13214,22 +13276,21 @@ dis.SeesPdu = function()
        for(var idx = 0; idx < this.numberOfPropulsionSystems; idx++)
        {
            var anX = new dis.PropulsionSystemData();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.propulsionSystemData.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVectoringNozzleSystems; idx++)
        {
            var anX = new dis.VectoringNozzleSystem();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.vectoringSystemData.push(anX);
        }
 
   };
 
-  dis.SeesPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SeesPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -13238,7 +13299,7 @@ dis.SeesPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.orginatingEntityID.encodeToBinaryDIS(outputStream);
+       this.orginatingEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.infraredSignatureRepresentationIndex);
        outputStream.writeUShort(this.acousticSignatureRepresentationIndex);
        outputStream.writeUShort(this.radarCrossSectionSignatureRepresentationIndex);
@@ -13246,12 +13307,12 @@ dis.SeesPdu = function()
        outputStream.writeUShort(this.numberOfVectoringNozzleSystems);
        for(var idx = 0; idx < this.propulsionSystemData.length; idx++)
        {
-           propulsionSystemData[idx].encodeToBinaryDIS(outputStream);
+           propulsionSystemData[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.vectoringSystemData.length; idx++)
        {
-           vectoringSystemData[idx].encodeToBinaryDIS(outputStream);
+           vectoringSystemData[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13265,12 +13326,12 @@ exports.SeesPdu = dis.SeesPdu;
 /**
  * An entity's sensor information.  Section 6.2.77.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13301,20 +13362,18 @@ dis.Sensor = function()
    /** padding */
    this.padding = 0;
 
-  dis.Sensor.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Sensor.prototype.initFromBinary = function(inputStream)
   {
-
        this.sensorTypeSource = inputStream.readUByte();
        this.sensorOnOffStatus = inputStream.readUByte();
        this.sensorType = inputStream.readUShort();
-       this.station = inputStream.readInt();
+       this.station = inputStream.readUInt();
        this.quantity = inputStream.readUShort();
        this.padding = inputStream.readUShort();
   };
 
-  dis.Sensor.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Sensor.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.sensorTypeSource);
        outputStream.writeUByte(this.sensorOnOffStatus);
        outputStream.writeUShort(this.sensorType);
@@ -13332,12 +13391,12 @@ exports.Sensor = dis.Sensor;
 /**
  * Physical separation of an entity from another entity.  Section 6.2.94.6
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13371,26 +13430,24 @@ dis.SeparationVP = function()
    /** Station separated from */
    this.stationLocation = 0;
 
-  dis.SeparationVP.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SeparationVP.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUByte();
        this.reasonForSeparation = inputStream.readUByte();
        this.preEntityIndicator = inputStream.readUByte();
        this.padding1 = inputStream.readUByte();
-       this.parentEntityID.initFromBinaryDIS(inputStream);
+       this.parentEntityID.initFromBinary(inputStream);
        this.padding2 = inputStream.readUShort();
-       this.stationLocation = inputStream.readInt();
+       this.stationLocation = inputStream.readUInt();
   };
 
-  dis.SeparationVP.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SeparationVP.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.recordType);
        outputStream.writeUByte(this.reasonForSeparation);
        outputStream.writeUByte(this.preEntityIndicator);
        outputStream.writeUByte(this.padding1);
-       this.parentEntityID.encodeToBinaryDIS(outputStream);
+       this.parentEntityID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.padding2);
        outputStream.writeUInt(this.stationLocation);
   };
@@ -13404,12 +13461,12 @@ exports.SeparationVP = dis.SeparationVP;
 /**
  * Service Request PDU shall be used to communicate information associated with                            one entity requesting a service from another). Section 7.4.2 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13461,36 +13518,35 @@ dis.ServiceRequestPdu = function()
    /** padding */
    this.serviceRequestPadding = 0;
 
+   /** Field shall specify the type of supply and the amount of that supply for the number specified in the numberOfSupplyTypes (see 6.2.85), Section 7.4.2 */
     this.supplies = new Array();
  
-  dis.ServiceRequestPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.ServiceRequestPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.requestingEntityID.initFromBinaryDIS(inputStream);
-       this.servicingEntityID.initFromBinaryDIS(inputStream);
+       this.requestingEntityID.initFromBinary(inputStream);
+       this.servicingEntityID.initFromBinary(inputStream);
        this.serviceTypeRequested = inputStream.readUByte();
        this.numberOfSupplyTypes = inputStream.readUByte();
        this.serviceRequestPadding = inputStream.readShort();
        for(var idx = 0; idx < this.numberOfSupplyTypes; idx++)
        {
            var anX = new dis.SupplyQuantity();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.supplies.push(anX);
        }
 
   };
 
-  dis.ServiceRequestPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.ServiceRequestPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -13499,14 +13555,14 @@ dis.ServiceRequestPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.requestingEntityID.encodeToBinaryDIS(outputStream);
-       this.servicingEntityID.encodeToBinaryDIS(outputStream);
+       this.requestingEntityID.encodeToBinary(outputStream);
+       this.servicingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.serviceTypeRequested);
        outputStream.writeUByte(this.numberOfSupplyTypes);
        outputStream.writeShort(this.serviceRequestPadding);
        for(var idx = 0; idx < this.supplies.length; idx++)
        {
-           supplies[idx].encodeToBinaryDIS(outputStream);
+           supplies[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13520,12 +13576,12 @@ exports.ServiceRequestPdu = dis.ServiceRequestPdu;
 /**
  * Section 7.5.10. Change state information with the data contained in this. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13586,42 +13642,40 @@ dis.SetDataPdu = function()
    /** variable length list of variable length datums */
     this.variableDatums = new Array();
  
-  dis.SetDataPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SetDataPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
-       this.padding1 = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
+       this.padding1 = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatums.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatums.push(anX);
        }
 
   };
 
-  dis.SetDataPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SetDataPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -13630,20 +13684,20 @@ dis.SetDataPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
        outputStream.writeUInt(this.padding1);
        outputStream.writeUInt(this.numberOfFixedDatumRecords);
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatums.length; idx++)
        {
-           fixedDatums[idx].encodeToBinaryDIS(outputStream);
+           fixedDatums[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatums.length; idx++)
        {
-           variableDatums[idx].encodeToBinaryDIS(outputStream);
+           variableDatums[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13657,12 +13711,12 @@ exports.SetDataPdu = dis.SetDataPdu;
 /**
  * Section 5.3.12.9: initializing or chaning internal state information, reliable. Needs manual intervention to fix     padding on variable datums. UNFINISHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13729,44 +13783,42 @@ dis.SetDataReliablePdu = function()
    /** Variable datum records */
     this.variableDatumRecords = new Array();
  
-  dis.SetDataReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SetDataReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
-       this.numberOfFixedDatumRecords = inputStream.readInt();
-       this.numberOfVariableDatumRecords = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
+       this.numberOfFixedDatumRecords = inputStream.readUInt();
+       this.numberOfVariableDatumRecords = inputStream.readUInt();
        for(var idx = 0; idx < this.numberOfFixedDatumRecords; idx++)
        {
            var anX = new dis.FixedDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.fixedDatumRecords.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfVariableDatumRecords; idx++)
        {
            var anX = new dis.VariableDatum();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.variableDatumRecords.push(anX);
        }
 
   };
 
-  dis.SetDataReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SetDataReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -13775,8 +13827,8 @@ dis.SetDataReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
        outputStream.writeUByte(this.pad2);
@@ -13785,12 +13837,12 @@ dis.SetDataReliablePdu = function()
        outputStream.writeUInt(this.numberOfVariableDatumRecords);
        for(var idx = 0; idx < this.fixedDatumRecords.length; idx++)
        {
-           fixedDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           fixedDatumRecords[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.variableDatumRecords.length; idx++)
        {
-           variableDatumRecords[idx].encodeToBinaryDIS(outputStream);
+           variableDatumRecords[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13804,12 +13856,12 @@ exports.SetDataReliablePdu = dis.SetDataReliablePdu;
 /**
  *  Detailed information about a radio transmitter. This PDU requires manually written code to complete. The encodingScheme field can be used in multiple        ways, which requires hand-written code to finish. Section 7.7.3. UNFINISHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13864,34 +13916,32 @@ dis.SignalPdu = function()
    /** list of eight bit values */
     this.data = new Array();
  
-  dis.SignalPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SignalPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
        this.encodingScheme = inputStream.readUShort();
        this.tdlType = inputStream.readUShort();
-       this.sampleRate = inputStream.readInt();
+       this.sampleRate = inputStream.readUInt();
        this.dataLength = inputStream.readShort();
        this.samples = inputStream.readShort();
        for(var idx = 0; idx < this.dataLength; idx++)
        {
            var anX = new dis.OneByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.data.push(anX);
        }
 
   };
 
-  dis.SignalPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SignalPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -13907,7 +13957,7 @@ dis.SignalPdu = function()
        outputStream.writeShort(this.samples);
        for(var idx = 0; idx < this.data.length; idx++)
        {
-           data[idx].encodeToBinaryDIS(outputStream);
+           data[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13921,12 +13971,12 @@ exports.SignalPdu = dis.SignalPdu;
 /**
  * information abou an enitity not producing espdus. Section 6.2.79
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -13951,30 +14001,28 @@ dis.SilentEntitySystem = function()
    /** Variable length list of appearance records */
     this.appearanceRecordList = new Array();
  
-  dis.SilentEntitySystem.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SilentEntitySystem.prototype.initFromBinary = function(inputStream)
   {
-
        this.numberOfEntities = inputStream.readUShort();
        this.numberOfAppearanceRecords = inputStream.readUShort();
-       this.entityType.initFromBinaryDIS(inputStream);
+       this.entityType.initFromBinary(inputStream);
        for(var idx = 0; idx < this.numberOfAppearanceRecords; idx++)
        {
            var anX = new dis.FourByteChunk();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.appearanceRecordList.push(anX);
        }
 
   };
 
-  dis.SilentEntitySystem.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SilentEntitySystem.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.numberOfEntities);
        outputStream.writeUShort(this.numberOfAppearanceRecords);
-       this.entityType.encodeToBinaryDIS(outputStream);
+       this.entityType.encodeToBinary(outputStream);
        for(var idx = 0; idx < this.appearanceRecordList.length; idx++)
        {
-           appearanceRecordList[idx].encodeToBinaryDIS(outputStream);
+           appearanceRecordList[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -13988,12 +14036,12 @@ exports.SilentEntitySystem = dis.SilentEntitySystem;
 /**
  * A Simulation Address record shall consist of the Site Identification number and the Application Identification number. Section 6.2.79 
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14012,16 +14060,14 @@ dis.SimulationAddress = function()
    /** An application is defined as a software program that is used to generate and process distributed simulation data including live, virtual and constructive data. */
    this.application = 0;
 
-  dis.SimulationAddress.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SimulationAddress.prototype.initFromBinary = function(inputStream)
   {
-
        this.site = inputStream.readUShort();
        this.application = inputStream.readUShort();
   };
 
-  dis.SimulationAddress.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SimulationAddress.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.site);
        outputStream.writeUShort(this.application);
   };
@@ -14035,12 +14081,12 @@ exports.SimulationAddress = dis.SimulationAddress;
 /**
  * The unique designation of a simulation when using the 48-bit identifier format shall be specified by the Sim- ulation Identifier record. The reason that the 48-bit format is required in addition to the 32-bit simulation address format that actually identifies a specific simulation is because some 48-bit identifier fields in PDUs may contain either an Object Identifier, such as an Entity ID, or a Simulation Identifier. Section 6.2.80
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14059,17 +14105,15 @@ dis.SimulationIdentifier = function()
    /** This field shall be set to zero as there is no reference number associated with a Simulation Identifier. */
    this.referenceNumber = 0;
 
-  dis.SimulationIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SimulationIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.referenceNumber = inputStream.readUShort();
   };
 
-  dis.SimulationIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SimulationIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.referenceNumber);
   };
 }; // end of class
@@ -14082,12 +14126,12 @@ exports.SimulationIdentifier = dis.SimulationIdentifier;
 /**
  * Section 7.5 Abstract superclass for PDUs relating to the simulation itself. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14130,24 +14174,22 @@ dis.SimulationManagementFamilyPdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-  dis.SimulationManagementFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SimulationManagementFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
   };
 
-  dis.SimulationManagementFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SimulationManagementFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -14156,8 +14198,8 @@ dis.SimulationManagementFamilyPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -14169,12 +14211,12 @@ exports.SimulationManagementFamilyPdu = dis.SimulationManagementFamilyPdu;
 /**
  * First part of a simulation management (SIMAN) PDU and SIMAN-Reliability (SIMAN-R) PDU. Sectionn 6.2.81
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14196,20 +14238,18 @@ dis.SimulationManagementPduHeader = function()
    /** simulation, all simulations, a special ID, or an entity. See 5.6.5 and 5.12.4 */
    this.receivingID = new dis.SimulationIdentifier(); 
 
-  dis.SimulationManagementPduHeader.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SimulationManagementPduHeader.prototype.initFromBinary = function(inputStream)
   {
-
-       this.pduHeader.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
+       this.pduHeader.initFromBinary(inputStream);
+       this.originatingID.initFromBinary(inputStream);
+       this.receivingID.initFromBinary(inputStream);
   };
 
-  dis.SimulationManagementPduHeader.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SimulationManagementPduHeader.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.pduHeader.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
+       this.pduHeader.encodeToBinary(outputStream);
+       this.originatingID.encodeToBinary(outputStream);
+       this.receivingID.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -14221,12 +14261,12 @@ exports.SimulationManagementPduHeader = dis.SimulationManagementPduHeader;
 /**
  * Section 5.3.12: Abstract superclass for reliable simulation management PDUs
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14269,24 +14309,22 @@ dis.SimulationManagementWithReliabilityFamilyPdu = function()
    /** Object with which this point object is associated */
    this.receivingEntityID = new dis.EntityID(); 
 
-  dis.SimulationManagementWithReliabilityFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SimulationManagementWithReliabilityFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
   };
 
-  dis.SimulationManagementWithReliabilityFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SimulationManagementWithReliabilityFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -14295,8 +14333,8 @@ dis.SimulationManagementWithReliabilityFamilyPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -14308,12 +14346,12 @@ exports.SimulationManagementWithReliabilityFamilyPdu = dis.SimulationManagementW
 /**
  * Does not work, and causes failure in anything it is embedded in. Section 6.2.83
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14332,26 +14370,24 @@ dis.StandardVariableSpecification = function()
    /** variable length list of standard variables, The class type and length here are WRONG and will cause the incorrect serialization of any class in whihc it is embedded. */
     this.standardVariables = new Array();
  
-  dis.StandardVariableSpecification.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StandardVariableSpecification.prototype.initFromBinary = function(inputStream)
   {
-
        this.numberOfStandardVariableRecords = inputStream.readUShort();
        for(var idx = 0; idx < this.numberOfStandardVariableRecords; idx++)
        {
            var anX = new dis.SimulationManagementPduHeader();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.standardVariables.push(anX);
        }
 
   };
 
-  dis.StandardVariableSpecification.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StandardVariableSpecification.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.numberOfStandardVariableRecords);
        for(var idx = 0; idx < this.standardVariables.length; idx++)
        {
-           standardVariables[idx].encodeToBinaryDIS(outputStream);
+           standardVariables[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -14365,12 +14401,12 @@ exports.StandardVariableSpecification = dis.StandardVariableSpecification;
 /**
  * Section 7.5.4. Start or resume an exercise. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14413,12 +14449,6 @@ dis.StartResumePdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for originating entity(or simulation) */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the receiving entity(or simulation) */
-   this.receivingID = new dis.EntityID(); 
-
    /** This field shall specify the real-world time (UTC) at which the entity is to start/resume in the exercise. This information shall be used by the participating simulation applications to start/resume an exercise synchronously. This field shall be represented by a Clock Time record (see 6.2.16). */
    this.realWorldTime = new dis.ClockTime(); 
 
@@ -14428,29 +14458,25 @@ dis.StartResumePdu = function()
    /** Identifier for the specific and unique start/resume request */
    this.requestID = 0;
 
-  dis.StartResumePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StartResumePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.realWorldTime.initFromBinaryDIS(inputStream);
-       this.simulationTime.initFromBinaryDIS(inputStream);
-       this.requestID = inputStream.readInt();
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.realWorldTime.initFromBinary(inputStream);
+       this.simulationTime.initFromBinary(inputStream);
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.StartResumePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StartResumePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -14459,12 +14485,10 @@ dis.StartResumePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
-       this.realWorldTime.encodeToBinaryDIS(outputStream);
-       this.simulationTime.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.realWorldTime.encodeToBinary(outputStream);
+       this.simulationTime.encodeToBinary(outputStream);
        outputStream.writeUInt(this.requestID);
   };
 }; // end of class
@@ -14477,12 +14501,12 @@ exports.StartResumePdu = dis.StartResumePdu;
 /**
  * Section 5.3.12.3: Start resume simulation, relaible. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14543,30 +14567,28 @@ dis.StartResumeReliablePdu = function()
    /** Request ID */
    this.requestID = 0;
 
-  dis.StartResumeReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StartResumeReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.realWorldTime.initFromBinaryDIS(inputStream);
-       this.simulationTime.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.realWorldTime.initFromBinary(inputStream);
+       this.simulationTime.initFromBinary(inputStream);
        this.requiredReliabilityService = inputStream.readUByte();
        this.pad1 = inputStream.readUShort();
        this.pad2 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.StartResumeReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StartResumeReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -14575,10 +14597,10 @@ dis.StartResumeReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.realWorldTime.encodeToBinaryDIS(outputStream);
-       this.simulationTime.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.realWorldTime.encodeToBinary(outputStream);
+       this.simulationTime.encodeToBinary(outputStream);
        outputStream.writeUByte(this.requiredReliabilityService);
        outputStream.writeUShort(this.pad1);
        outputStream.writeUByte(this.pad2);
@@ -14594,12 +14616,12 @@ exports.StartResumeReliablePdu = dis.StartResumeReliablePdu;
 /**
  * Section 7.5.5. Stop or freeze an enity (or exercise). COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14642,12 +14664,6 @@ dis.StopFreezePdu = function()
    /** Entity that is intended to receive message */
    this.receivingEntityID = new dis.EntityID(); 
 
-   /** Identifier for originating entity(or simulation) */
-   this.originatingID = new dis.EntityID(); 
-
-   /** Identifier for the receiving entity(or simulation) */
-   this.receivingID = new dis.EntityID(); 
-
    /** real-world(UTC) time at which the entity shall stop or freeze in the exercise */
    this.realWorldTime = new dis.ClockTime(); 
 
@@ -14663,31 +14679,27 @@ dis.StopFreezePdu = function()
    /** Request ID that is unique */
    this.requestID = 0;
 
-  dis.StopFreezePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StopFreezePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.originatingID.initFromBinaryDIS(inputStream);
-       this.receivingID.initFromBinaryDIS(inputStream);
-       this.realWorldTime.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.realWorldTime.initFromBinary(inputStream);
        this.reason = inputStream.readUByte();
        this.frozenBehavior = inputStream.readUByte();
        this.padding1 = inputStream.readShort();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.StopFreezePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StopFreezePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -14696,11 +14708,9 @@ dis.StopFreezePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.originatingID.encodeToBinaryDIS(outputStream);
-       this.receivingID.encodeToBinaryDIS(outputStream);
-       this.realWorldTime.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.realWorldTime.encodeToBinary(outputStream);
        outputStream.writeUByte(this.reason);
        outputStream.writeUByte(this.frozenBehavior);
        outputStream.writeShort(this.padding1);
@@ -14716,12 +14726,12 @@ exports.StopFreezePdu = dis.StopFreezePdu;
 /**
  * Section 5.3.12.4: Stop freeze simulation, relaible. COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14782,30 +14792,28 @@ dis.StopFreezeReliablePdu = function()
    /** Request ID */
    this.requestID = 0;
 
-  dis.StopFreezeReliablePdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StopFreezeReliablePdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.originatingEntityID.initFromBinaryDIS(inputStream);
-       this.receivingEntityID.initFromBinaryDIS(inputStream);
-       this.realWorldTime.initFromBinaryDIS(inputStream);
+       this.originatingEntityID.initFromBinary(inputStream);
+       this.receivingEntityID.initFromBinary(inputStream);
+       this.realWorldTime.initFromBinary(inputStream);
        this.reason = inputStream.readUByte();
        this.frozenBehavior = inputStream.readUByte();
        this.requiredReliablityService = inputStream.readUByte();
        this.pad1 = inputStream.readUByte();
-       this.requestID = inputStream.readInt();
+       this.requestID = inputStream.readUInt();
   };
 
-  dis.StopFreezeReliablePdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StopFreezeReliablePdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -14814,9 +14822,9 @@ dis.StopFreezeReliablePdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.originatingEntityID.encodeToBinaryDIS(outputStream);
-       this.receivingEntityID.encodeToBinaryDIS(outputStream);
-       this.realWorldTime.encodeToBinaryDIS(outputStream);
+       this.originatingEntityID.encodeToBinary(outputStream);
+       this.receivingEntityID.encodeToBinary(outputStream);
+       this.realWorldTime.encodeToBinary(outputStream);
        outputStream.writeUByte(this.reason);
        outputStream.writeUByte(this.frozenBehavior);
        outputStream.writeUByte(this.requiredReliablityService);
@@ -14833,12 +14841,12 @@ exports.StopFreezeReliablePdu = dis.StopFreezeReliablePdu;
 /**
  * Information about an entity's engine fuel. Section 6.2.84.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14866,19 +14874,17 @@ dis.StorageFuel = function()
    /** padding */
    this.padding = 0;
 
-  dis.StorageFuel.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StorageFuel.prototype.initFromBinary = function(inputStream)
   {
-
-       this.fuelQuantity = inputStream.readInt();
+       this.fuelQuantity = inputStream.readUInt();
        this.fuelMeasurementUnits = inputStream.readUByte();
        this.fuelType = inputStream.readUByte();
        this.fuelLocation = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.StorageFuel.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StorageFuel.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.fuelQuantity);
        outputStream.writeUByte(this.fuelMeasurementUnits);
        outputStream.writeUByte(this.fuelType);
@@ -14895,12 +14901,12 @@ exports.StorageFuel = dis.StorageFuel;
 /**
  * For each type or location of Storage Fuel, this record shall specify the type, location, fuel measure- ment units, reload quantity and maximum quantity for storage fuel either for the whole entity or a specific storage fuel location (tank). Section 6.2.85.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14937,11 +14943,10 @@ dis.StorageFuelReload = function()
    /** padding */
    this.padding = 0;
 
-  dis.StorageFuelReload.prototype.initFromBinaryDIS = function(inputStream)
+  dis.StorageFuelReload.prototype.initFromBinary = function(inputStream)
   {
-
-       this.standardQuantity = inputStream.readInt();
-       this.maximumQuantity = inputStream.readInt();
+       this.standardQuantity = inputStream.readUInt();
+       this.maximumQuantity = inputStream.readUInt();
        this.standardQuantityReloadTime = inputStream.readUByte();
        this.maximumQuantityReloadTime = inputStream.readUByte();
        this.fuelMeasurementUnits = inputStream.readUByte();
@@ -14950,9 +14955,8 @@ dis.StorageFuelReload = function()
        this.padding = inputStream.readUByte();
   };
 
-  dis.StorageFuelReload.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.StorageFuelReload.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.standardQuantity);
        outputStream.writeUInt(this.maximumQuantity);
        outputStream.writeUByte(this.standardQuantityReloadTime);
@@ -14972,12 +14976,12 @@ exports.StorageFuelReload = dis.StorageFuelReload;
 /**
  *  A supply, and the amount of that supply. Section 6.2.86
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -14996,17 +15000,15 @@ dis.SupplyQuantity = function()
    /** the number of units of a supply type.  */
    this.quantity = 0;
 
-  dis.SupplyQuantity.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SupplyQuantity.prototype.initFromBinary = function(inputStream)
   {
-
-       this.supplyType.initFromBinaryDIS(inputStream);
+       this.supplyType.initFromBinary(inputStream);
        this.quantity = inputStream.readFloat32();
   };
 
-  dis.SupplyQuantity.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SupplyQuantity.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.supplyType.encodeToBinaryDIS(outputStream);
+       this.supplyType.encodeToBinary(outputStream);
        outputStream.writeFloat32(this.quantity);
   };
 }; // end of class
@@ -15019,12 +15021,12 @@ exports.SupplyQuantity = dis.SupplyQuantity;
 /**
  * Section 5.3.11: Abstract superclass for synthetic environment PDUs
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15061,22 +15063,20 @@ dis.SyntheticEnvironmentFamilyPdu = function()
    /** zero-filled array of padding */
    this.padding = 0;
 
-  dis.SyntheticEnvironmentFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SyntheticEnvironmentFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
   };
 
-  dis.SyntheticEnvironmentFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SyntheticEnvironmentFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -15096,12 +15096,12 @@ exports.SyntheticEnvironmentFamilyPdu = dis.SyntheticEnvironmentFamilyPdu;
 /**
  * The ID of the IFF emitting system. NOT COMPLETE. Section 6.2.87
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15126,22 +15126,20 @@ dis.SystemIdentifier = function()
    /** status of this PDU, see section 6.2.15 */
    this.changeOptions = new dis.ChangeOptions(); 
 
-  dis.SystemIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.SystemIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
        this.systemType = inputStream.readUShort();
        this.systemName = inputStream.readUShort();
        this.systemMode = inputStream.readUShort();
-       this.changeOptions.initFromBinaryDIS(inputStream);
+       this.changeOptions.initFromBinary(inputStream);
   };
 
-  dis.SystemIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.SystemIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.systemType);
        outputStream.writeUShort(this.systemName);
        outputStream.writeUShort(this.systemMode);
-       this.changeOptions.encodeToBinaryDIS(outputStream);
+       this.changeOptions.encodeToBinary(outputStream);
   };
 }; // end of class
 
@@ -15151,14 +15149,88 @@ exports.SystemIdentifier = dis.SystemIdentifier;
 // End of SystemIdentifier class
 
 /**
- * Total number of record sets contained in a logical set of one or more PDUs. Used to transfer ownership, etc Section 6.2.88
+ * LSB is absolute or relative timestamp. Scale is 2^31 - 1 divided into one hour.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
+if (typeof dis === "undefined")
+ dis = {};
+
+
+// Support for node.js style modules. Ignored if used in a client context.
+// See http://howtonode.org/creating-custom-modules
+if (typeof exports === "undefined")
+ exports = {};
+
+
+dis.Timestamp = function()
+{
+   /** timestamp */
+   this.timestamp = 0;
+
+  dis.Timestamp.prototype.initFromBinary = function(inputStream)
+  {
+       this.timestamp = inputStream.readUInt();
+  };
+
+  dis.Timestamp.prototype.encodeToBinary = function(outputStream)
+  {
+       outputStream.writeUInt(this.timestamp);
+  };
+
+/** 0 relative timestamp, 1 host synchronized timestamp */
+dis.Timestamp.prototype.getTimestamp_timestampType = function()
+{
+   var val = this.timestamp & 0x1;
+   return val >> 0;
+};
+
+
+/** 0 relative timestamp, 1 host synchronized timestamp */
+dis.Timestamp.prototype.setTimestamp_timestampType= function(val)
+{
+  this.timestamp &= ~0x1; // Zero existing bits
+  val = val << 0;
+  this.timestamp = this.timestamp | val; 
+};
+
+
+/** 2^31-1 per hour time units */
+dis.Timestamp.prototype.getTimestamp_timestampValue = function()
+{
+   var val = this.timestamp & 0xFE;
+   return val >> 1;
+};
+
+
+/** 2^31-1 per hour time units */
+dis.Timestamp.prototype.setTimestamp_timestampValue= function(val)
+{
+  this.timestamp &= ~0xFE; // Zero existing bits
+  val = val << 1;
+  this.timestamp = this.timestamp | val; 
+};
+
+}; // end of class
+
+ // node.js module support
+exports.Timestamp = dis.Timestamp;
+
+// End of Timestamp class
+
+/**
+ * Total number of record sets contained in a logical set of one or more PDUs. Used to transfer ownership, etc Section 6.2.88
+ *
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
+ *
+ * @author DMcG
+ */
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15177,16 +15249,14 @@ dis.TotalRecordSets = function()
    /** padding */
    this.padding = 0;
 
-  dis.TotalRecordSets.prototype.initFromBinaryDIS = function(inputStream)
+  dis.TotalRecordSets.prototype.initFromBinary = function(inputStream)
   {
-
        this.totalRecordSets = inputStream.readUShort();
        this.padding = inputStream.readUShort();
   };
 
-  dis.TotalRecordSets.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.TotalRecordSets.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.totalRecordSets);
        outputStream.writeUShort(this.padding);
   };
@@ -15200,12 +15270,12 @@ exports.TotalRecordSets = dis.TotalRecordSets;
 /**
  *  Track-Jam data Section 6.2.89
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15227,18 +15297,16 @@ dis.TrackJamData = function()
    /** Beam associated with the entity */
    this.beamNumber = 0;
 
-  dis.TrackJamData.prototype.initFromBinaryDIS = function(inputStream)
+  dis.TrackJamData.prototype.initFromBinary = function(inputStream)
   {
-
-       this.entityID.initFromBinaryDIS(inputStream);
+       this.entityID.initFromBinary(inputStream);
        this.emitterNumber = inputStream.readUByte();
        this.beamNumber = inputStream.readUByte();
   };
 
-  dis.TrackJamData.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.TrackJamData.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.entityID.encodeToBinaryDIS(outputStream);
+       this.entityID.encodeToBinary(outputStream);
        outputStream.writeUByte(this.emitterNumber);
        outputStream.writeUByte(this.beamNumber);
   };
@@ -15252,12 +15320,12 @@ exports.TrackJamData = dis.TrackJamData;
 /**
  * Detailed information about a radio transmitter. This PDU requires manually written code to complete, since the modulation parameters are of variable length. Section 7.7.2 UNFINISHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15357,31 +15425,30 @@ dis.TransmitterPdu = function()
    /** variable length list of antenna pattern records */
     this.antennaPatternList = new Array();
  
-  dis.TransmitterPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.TransmitterPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.radioReferenceID.initFromBinaryDIS(inputStream);
+       this.radioReferenceID.initFromBinary(inputStream);
        this.radioNumber = inputStream.readUShort();
-       this.radioEntityType.initFromBinaryDIS(inputStream);
+       this.radioEntityType.initFromBinary(inputStream);
        this.transmitState = inputStream.readUByte();
        this.inputSource = inputStream.readUByte();
        this.variableTransmitterParameterCount = inputStream.readUShort();
-       this.antennaLocation.initFromBinaryDIS(inputStream);
-       this.relativeAntennaLocation.initFromBinaryDIS(inputStream);
+       this.antennaLocation.initFromBinary(inputStream);
+       this.relativeAntennaLocation.initFromBinary(inputStream);
        this.antennaPatternType = inputStream.readUShort();
        this.antennaPatternCount = inputStream.readUShort();
        this.frequency = inputStream.readLong();
        this.transmitFrequencyBandwidth = inputStream.readFloat32();
        this.power = inputStream.readFloat32();
-       this.modulationType.initFromBinaryDIS(inputStream);
+       this.modulationType.initFromBinary(inputStream);
        this.cryptoSystem = inputStream.readUShort();
        this.cryptoKeyId = inputStream.readUShort();
        this.modulationParameterCount = inputStream.readUByte();
@@ -15390,22 +15457,21 @@ dis.TransmitterPdu = function()
        for(var idx = 0; idx < this.modulationParameterCount; idx++)
        {
            var anX = new dis.Vector3Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.modulationParametersList.push(anX);
        }
 
        for(var idx = 0; idx < this.antennaPatternCount; idx++)
        {
            var anX = new dis.Vector3Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.antennaPatternList.push(anX);
        }
 
   };
 
-  dis.TransmitterPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.TransmitterPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -15414,20 +15480,20 @@ dis.TransmitterPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.radioReferenceID.encodeToBinaryDIS(outputStream);
+       this.radioReferenceID.encodeToBinary(outputStream);
        outputStream.writeUShort(this.radioNumber);
-       this.radioEntityType.encodeToBinaryDIS(outputStream);
+       this.radioEntityType.encodeToBinary(outputStream);
        outputStream.writeUByte(this.transmitState);
        outputStream.writeUByte(this.inputSource);
        outputStream.writeUShort(this.variableTransmitterParameterCount);
-       this.antennaLocation.encodeToBinaryDIS(outputStream);
-       this.relativeAntennaLocation.encodeToBinaryDIS(outputStream);
+       this.antennaLocation.encodeToBinary(outputStream);
+       this.relativeAntennaLocation.encodeToBinary(outputStream);
        outputStream.writeUShort(this.antennaPatternType);
        outputStream.writeUShort(this.antennaPatternCount);
        outputStream.writeLong(this.frequency);
        outputStream.writeFloat32(this.transmitFrequencyBandwidth);
        outputStream.writeFloat32(this.power);
-       this.modulationType.encodeToBinaryDIS(outputStream);
+       this.modulationType.encodeToBinary(outputStream);
        outputStream.writeUShort(this.cryptoSystem);
        outputStream.writeUShort(this.cryptoKeyId);
        outputStream.writeUByte(this.modulationParameterCount);
@@ -15435,12 +15501,12 @@ dis.TransmitterPdu = function()
        outputStream.writeUByte(this.padding3);
        for(var idx = 0; idx < this.modulationParametersList.length; idx++)
        {
-           modulationParametersList[idx].encodeToBinaryDIS(outputStream);
+           modulationParametersList[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.antennaPatternList.length; idx++)
        {
-           antennaPatternList[idx].encodeToBinaryDIS(outputStream);
+           antennaPatternList[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -15454,12 +15520,12 @@ exports.TransmitterPdu = dis.TransmitterPdu;
 /**
  * 16 bit piece of data
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15475,18 +15541,16 @@ dis.TwoByteChunk = function()
    /** two bytes of arbitrary data */
    this.otherParameters = new Array(0, 0);
 
-  dis.TwoByteChunk.prototype.initFromBinaryDIS = function(inputStream)
+  dis.TwoByteChunk.prototype.initFromBinary = function(inputStream)
   {
-
        for(var idx = 0; idx < 2; idx++)
        {
           this.otherParameters[ idx ] = inputStream.readByte();
        }
   };
 
-  dis.TwoByteChunk.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.TwoByteChunk.prototype.encodeToBinary = function(outputStream)
   {
-
        for(var idx = 0; idx < 2; idx++)
        {
           outputStream.writeByte(this.otherParameters[ idx ] );
@@ -15502,12 +15566,12 @@ exports.TwoByteChunk = dis.TwoByteChunk;
 /**
  * Regeneration parameters for active emission systems that are variable throughout a scenario. Section 6.2.91
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15538,9 +15602,8 @@ dis.UAFundamentalParameter = function()
    /** vertical beamwidth of the main beam. Meastured at the 3dB down point of peak radiated power. In radians. */
    this.beamwidthDownElevation = 0;
 
-  dis.UAFundamentalParameter.prototype.initFromBinaryDIS = function(inputStream)
+  dis.UAFundamentalParameter.prototype.initFromBinary = function(inputStream)
   {
-
        this.activeEmissionParameterIndex = inputStream.readUShort();
        this.scanPattern = inputStream.readUShort();
        this.beamCenterAzimuthHorizontal = inputStream.readFloat32();
@@ -15549,9 +15612,8 @@ dis.UAFundamentalParameter = function()
        this.beamwidthDownElevation = inputStream.readFloat32();
   };
 
-  dis.UAFundamentalParameter.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.UAFundamentalParameter.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUShort(this.activeEmissionParameterIndex);
        outputStream.writeUShort(this.scanPattern);
        outputStream.writeFloat32(this.beamCenterAzimuthHorizontal);
@@ -15569,12 +15631,12 @@ exports.UAFundamentalParameter = dis.UAFundamentalParameter;
 /**
  *  Information about underwater acoustic emmissions. This requires manual cleanup.  The beam data records should ALL be a the finish, rather than attached to each emitter system. Section 7.6.4. UNFINISHED
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15647,19 +15709,18 @@ dis.UaPdu = function()
    /** THIS IS WRONG. It has the wrong class in the list. */
     this.emitterSystems = new Array();
  
-  dis.UaPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.UaPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.emittingEntityID.initFromBinaryDIS(inputStream);
-       this.eventID.initFromBinaryDIS(inputStream);
+       this.emittingEntityID.initFromBinary(inputStream);
+       this.eventID.initFromBinary(inputStream);
        this.stateChangeIndicator = inputStream.readByte();
        this.pad = inputStream.readByte();
        this.passiveParameterIndex = inputStream.readUShort();
@@ -15670,29 +15731,28 @@ dis.UaPdu = function()
        for(var idx = 0; idx < this.numberOfShafts; idx++)
        {
            var anX = new dis.Vector3Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.shaftRPMs.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfAPAs; idx++)
        {
            var anX = new dis.Vector3Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.apaData.push(anX);
        }
 
        for(var idx = 0; idx < this.numberOfUAEmitterSystems; idx++)
        {
            var anX = new dis.Vector3Float();
-           anX.initFromBinaryDIS(inputStream);
+           anX.initFromBinary(inputStream);
            this.emitterSystems.push(anX);
        }
 
   };
 
-  dis.UaPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.UaPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -15701,8 +15761,8 @@ dis.UaPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.emittingEntityID.encodeToBinaryDIS(outputStream);
-       this.eventID.encodeToBinaryDIS(outputStream);
+       this.emittingEntityID.encodeToBinary(outputStream);
+       this.eventID.encodeToBinary(outputStream);
        outputStream.writeByte(this.stateChangeIndicator);
        outputStream.writeByte(this.pad);
        outputStream.writeUShort(this.passiveParameterIndex);
@@ -15712,17 +15772,17 @@ dis.UaPdu = function()
        outputStream.writeUByte(this.numberOfUAEmitterSystems);
        for(var idx = 0; idx < this.shaftRPMs.length; idx++)
        {
-           shaftRPMs[idx].encodeToBinaryDIS(outputStream);
+           shaftRPMs[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.apaData.length; idx++)
        {
-           apaData[idx].encodeToBinaryDIS(outputStream);
+           apaData[idx].encodeToBinary(outputStream);
        }
 
        for(var idx = 0; idx < this.emitterSystems.length; idx++)
        {
-           emitterSystems[idx].encodeToBinaryDIS(outputStream);
+           emitterSystems[idx].encodeToBinary(outputStream);
        }
 
   };
@@ -15736,12 +15796,12 @@ exports.UaPdu = dis.UaPdu;
 /**
  * The unique designation of one or more unattached radios in an event or exercise Section 6.2.91
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15760,17 +15820,15 @@ dis.UnattachedIdentifier = function()
    /** Reference number */
    this.referenceNumber = 0;
 
-  dis.UnattachedIdentifier.prototype.initFromBinaryDIS = function(inputStream)
+  dis.UnattachedIdentifier.prototype.initFromBinary = function(inputStream)
   {
-
-       this.simulationAddress.initFromBinaryDIS(inputStream);
+       this.simulationAddress.initFromBinary(inputStream);
        this.referenceNumber = inputStream.readUShort();
   };
 
-  dis.UnattachedIdentifier.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.UnattachedIdentifier.prototype.encodeToBinary = function(outputStream)
   {
-
-       this.simulationAddress.encodeToBinaryDIS(outputStream);
+       this.simulationAddress.encodeToBinary(outputStream);
        outputStream.writeUShort(this.referenceNumber);
   };
 }; // end of class
@@ -15783,12 +15841,12 @@ exports.UnattachedIdentifier = dis.UnattachedIdentifier;
 /**
  * container class not in specification
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15804,15 +15862,13 @@ dis.UnsignedDISInteger = function()
    /** unsigned integer */
    this.val = 0;
 
-  dis.UnsignedDISInteger.prototype.initFromBinaryDIS = function(inputStream)
+  dis.UnsignedDISInteger.prototype.initFromBinary = function(inputStream)
   {
-
-       this.val = inputStream.readInt();
+       this.val = inputStream.readUInt();
   };
 
-  dis.UnsignedDISInteger.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.UnsignedDISInteger.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.val);
   };
 }; // end of class
@@ -15825,12 +15881,12 @@ exports.UnsignedDISInteger = dis.UnsignedDISInteger;
 /**
  * the variable datum type, the datum length, and the value for that variable datum type. NOT COMPLETE. Section 6.2.93
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15843,29 +15899,37 @@ if (typeof exports === "undefined")
 
 dis.VariableDatum = function()
 {
-   /** Type of variable datum to be transmitted. 32 bit enumeration defined in EBV */
+   /** ID of variable datum to be transmitted. 32 bit enumeration defined in EBV */
    this.variableDatumID = 0;
 
    /** Length, IN BITS, of the variable datum. */
    this.variableDatumLength = 0;
 
-   /** Variable datum. This can be any number of bits long, depending on the datum. */
-   this.variableDatumBits = 0;
-
-  dis.VariableDatum.prototype.initFromBinaryDIS = function(inputStream)
+   /** Variable length data class */
+    this.variableDatumData = new Array();
+ 
+  dis.VariableDatum.prototype.initFromBinary = function(inputStream)
   {
+       this.variableDatumID = inputStream.readUInt();
+       this.variableDatumLength = inputStream.readUInt();
+       for(var idx = 0; idx < this.variableDatumLength; idx++)
+       {
+           var anX = new dis.OneByteChunk();
+           anX.initFromBinary(inputStream);
+           this.variableDatumData.push(anX);
+       }
 
-       this.variableDatumID = inputStream.readInt();
-       this.variableDatumLength = inputStream.readInt();
-       this.variableDatumBits = inputStream.readInt();
   };
 
-  dis.VariableDatum.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.VariableDatum.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.variableDatumID);
        outputStream.writeUInt(this.variableDatumLength);
-       outputStream.writeUInt(this.variableDatumBits);
+       for(var idx = 0; idx < this.variableDatumData.length; idx++)
+       {
+           variableDatumData[idx].encodeToBinary(outputStream);
+       }
+
   };
 }; // end of class
 
@@ -15877,12 +15941,12 @@ exports.VariableDatum = dis.VariableDatum;
 /**
  * specification of additional information associated with an entity or detonation, not otherwise accounted for in a PDU 6.2.94.1
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15910,19 +15974,17 @@ dis.VariableParameter = function()
    /** Variable parameter data fields.  */
    this.variableParameterFields4 = 0;
 
-  dis.VariableParameter.prototype.initFromBinaryDIS = function(inputStream)
+  dis.VariableParameter.prototype.initFromBinary = function(inputStream)
   {
-
        this.recordType = inputStream.readUByte();
        this.variableParameterFields1 = inputStream.readFloat64();
-       this.variableParameterFields2 = inputStream.readInt();
+       this.variableParameterFields2 = inputStream.readUInt();
        this.variableParameterFields3 = inputStream.readUShort();
        this.variableParameterFields4 = inputStream.readUByte();
   };
 
-  dis.VariableParameter.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.VariableParameter.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.recordType);
        outputStream.writeFloat64(this.variableParameterFields1);
        outputStream.writeUInt(this.variableParameterFields2);
@@ -15939,12 +16001,12 @@ exports.VariableParameter = dis.VariableParameter;
 /**
  * Relates to radios. NOT COMPLETE. Section 6.2.94
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -15963,16 +16025,14 @@ dis.VariableTransmitterParameters = function()
    /** Length, in bytes */
    this.recordLength = 4;
 
-  dis.VariableTransmitterParameters.prototype.initFromBinaryDIS = function(inputStream)
+  dis.VariableTransmitterParameters.prototype.initFromBinary = function(inputStream)
   {
-
-       this.recordType = inputStream.readInt();
-       this.recordLength = inputStream.readInt();
+       this.recordType = inputStream.readUInt();
+       this.recordLength = inputStream.readUInt();
   };
 
-  dis.VariableTransmitterParameters.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.VariableTransmitterParameters.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUInt(this.recordType);
        outputStream.writeUInt(this.recordLength);
   };
@@ -15986,12 +16046,12 @@ exports.VariableTransmitterParameters = dis.VariableTransmitterParameters;
 /**
  * Two floating point values, x, y
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -16010,16 +16070,14 @@ dis.Vector2Float = function()
    /** y Value */
    this.y = 0;
 
-  dis.Vector2Float.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Vector2Float.prototype.initFromBinary = function(inputStream)
   {
-
        this.x = inputStream.readFloat32();
        this.y = inputStream.readFloat32();
   };
 
-  dis.Vector2Float.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Vector2Float.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.x);
        outputStream.writeFloat32(this.y);
   };
@@ -16033,12 +16091,12 @@ exports.Vector2Float = dis.Vector2Float;
 /**
  * Three double precision floating point values, x, y, and z. Used for world coordinates Section 6.2.97.
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -16060,17 +16118,15 @@ dis.Vector3Double = function()
    /** Z value */
    this.z = 0;
 
-  dis.Vector3Double.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Vector3Double.prototype.initFromBinary = function(inputStream)
   {
-
        this.x = inputStream.readFloat64();
        this.y = inputStream.readFloat64();
        this.z = inputStream.readFloat64();
   };
 
-  dis.Vector3Double.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Vector3Double.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat64(this.x);
        outputStream.writeFloat64(this.y);
        outputStream.writeFloat64(this.z);
@@ -16085,12 +16141,12 @@ exports.Vector3Double = dis.Vector3Double;
 /**
  * Three floating point values, x, y, and z. Section 6.2.95
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -16112,17 +16168,15 @@ dis.Vector3Float = function()
    /** Z value */
    this.z = 0;
 
-  dis.Vector3Float.prototype.initFromBinaryDIS = function(inputStream)
+  dis.Vector3Float.prototype.initFromBinary = function(inputStream)
   {
-
        this.x = inputStream.readFloat32();
        this.y = inputStream.readFloat32();
        this.z = inputStream.readFloat32();
   };
 
-  dis.Vector3Float.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.Vector3Float.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.x);
        outputStream.writeFloat32(this.y);
        outputStream.writeFloat32(this.z);
@@ -16137,12 +16191,12 @@ exports.Vector3Float = dis.Vector3Float;
 /**
  * Operational data for describing the vectoring nozzle systems Section 6.2.96
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -16161,16 +16215,14 @@ dis.VectoringNozzleSystem = function()
    /** In degrees */
    this.verticalDeflectionAngle = 0;
 
-  dis.VectoringNozzleSystem.prototype.initFromBinaryDIS = function(inputStream)
+  dis.VectoringNozzleSystem.prototype.initFromBinary = function(inputStream)
   {
-
        this.horizontalDeflectionAngle = inputStream.readFloat32();
        this.verticalDeflectionAngle = inputStream.readFloat32();
   };
 
-  dis.VectoringNozzleSystem.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.VectoringNozzleSystem.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeFloat32(this.horizontalDeflectionAngle);
        outputStream.writeFloat32(this.verticalDeflectionAngle);
   };
@@ -16184,12 +16236,12 @@ exports.VectoringNozzleSystem = dis.VectoringNozzleSystem;
 /**
  * abstract superclass for fire and detonation pdus that have shared information. Section 7.3 COMPLETE
  *
- * Copyright (c) 2008-2014, MOVES Institute, Naval Postgraduate School. All rights reserved.
+ * Copyright (c) 2008-2015, MOVES Institute, Naval Postgraduate School. All rights reserved.
  * This work is licensed under the BSD open source license, available at https://www.movesinstitute.org/licenses/bsd.html
  *
  * @author DMcG
  */
-// On the client side, support for a dis namespace.
+// On the client side, support for a  namespace.
 if (typeof dis === "undefined")
  dis = {};
 
@@ -16232,24 +16284,22 @@ dis.WarfareFamilyPdu = function()
    /** ID of the entity that is being shot at */
    this.targetEntityID = new dis.EntityID(); 
 
-  dis.WarfareFamilyPdu.prototype.initFromBinaryDIS = function(inputStream)
+  dis.WarfareFamilyPdu.prototype.initFromBinary = function(inputStream)
   {
-
        this.protocolVersion = inputStream.readUByte();
        this.exerciseID = inputStream.readUByte();
        this.pduType = inputStream.readUByte();
        this.protocolFamily = inputStream.readUByte();
-       this.timestamp = inputStream.readInt();
+       this.timestamp = inputStream.readUInt();
        this.length = inputStream.readUShort();
        this.pduStatus = inputStream.readUByte();
        this.padding = inputStream.readUByte();
-       this.firingEntityID.initFromBinaryDIS(inputStream);
-       this.targetEntityID.initFromBinaryDIS(inputStream);
+       this.firingEntityID.initFromBinary(inputStream);
+       this.targetEntityID.initFromBinary(inputStream);
   };
 
-  dis.WarfareFamilyPdu.prototype.encodeToBinaryDIS = function(outputStream)
+  dis.WarfareFamilyPdu.prototype.encodeToBinary = function(outputStream)
   {
-
        outputStream.writeUByte(this.protocolVersion);
        outputStream.writeUByte(this.exerciseID);
        outputStream.writeUByte(this.pduType);
@@ -16258,8 +16308,8 @@ dis.WarfareFamilyPdu = function()
        outputStream.writeUShort(this.length);
        outputStream.writeUByte(this.pduStatus);
        outputStream.writeUByte(this.padding);
-       this.firingEntityID.encodeToBinaryDIS(outputStream);
-       this.targetEntityID.encodeToBinaryDIS(outputStream);
+       this.firingEntityID.encodeToBinary(outputStream);
+       this.targetEntityID.encodeToBinary(outputStream);
   };
 }; // end of class
 
